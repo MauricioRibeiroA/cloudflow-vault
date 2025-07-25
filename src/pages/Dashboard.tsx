@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileUpload } from '@/components/ui/file-upload';
+import { FolderCreate } from '@/components/ui/folder-create';
 import { toast } from '@/hooks/use-toast';
 import { 
   Search, 
@@ -44,6 +46,7 @@ interface FileItem {
   name: string;
   file_size: number;
   file_type: string;
+  file_path: string;
   created_at: string;
   uploaded_by: string;
 }
@@ -114,6 +117,98 @@ const Dashboard = () => {
       setFiles(data || []);
     } catch (error: any) {
       console.error('Error fetching files:', error);
+    }
+  };
+
+  const refreshData = () => {
+    fetchFolders();
+    fetchFiles();
+  };
+
+  const handleDownload = async (file: FileItem) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('files')
+        .download(file.file_path);
+
+      if (error) throw error;
+
+      // Create download link
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      // Log download action
+      await supabase
+        .from('logs')
+        .insert({
+          user_id: user?.id,
+          action: 'file_download',
+          target_type: 'file',
+          target_id: file.id,
+          target_name: file.name
+        });
+
+      toast({
+        title: "Download iniciado",
+        description: `${file.name} está sendo baixado.`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro no download",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDelete = async (file: FileItem) => {
+    if (!confirm(`Tem certeza que deseja excluir "${file.name}"?`)) return;
+
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('files')
+        .remove([file.file_path]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('files')
+        .delete()
+        .eq('id', file.id);
+
+      if (dbError) throw dbError;
+
+      // Log deletion
+      await supabase
+        .from('logs')
+        .insert({
+          user_id: user?.id,
+          action: 'file_delete',
+          target_type: 'file',
+          target_id: file.id,
+          target_name: file.name
+        });
+
+      toast({
+        title: "Arquivo excluído",
+        description: `${file.name} foi excluído com sucesso.`
+      });
+
+      refreshData();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -202,14 +297,8 @@ const Dashboard = () => {
             <Button variant="outline" size="icon" onClick={() => setViewMode('list')}>
               <List className="h-4 w-4" />
             </Button>
-            <Button variant="default" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Upload
-            </Button>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Nova Pasta
-            </Button>
+            <FileUpload currentFolder={currentFolder} onUploadComplete={refreshData} />
+            <FolderCreate currentFolder={currentFolder} onFolderCreated={refreshData} />
           </div>
         </div>
 
@@ -292,13 +381,20 @@ const Dashboard = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-1 mt-3">
-                          <Button size="icon" variant="ghost" className="h-8 w-8">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8"
+                            onClick={() => handleDownload(file)}
+                          >
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => handleDelete(file)}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -319,14 +415,8 @@ const Dashboard = () => {
                     {searchTerm ? 'Nenhum resultado para sua busca.' : 'Esta pasta está vazia. Faça upload de arquivos ou crie novas pastas.'}
                   </CardDescription>
                   <div className="flex items-center justify-center gap-2">
-                    <Button variant="default" className="flex items-center gap-2">
-                      <Upload className="h-4 w-4" />
-                      Fazer Upload
-                    </Button>
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      Nova Pasta
-                    </Button>
+                    <FileUpload currentFolder={currentFolder} onUploadComplete={refreshData} />
+                    <FolderCreate currentFolder={currentFolder} onFolderCreated={refreshData} />
                   </div>
                 </CardContent>
               </Card>
