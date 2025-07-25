@@ -49,6 +49,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, fullName: string, groupName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
+    // Log authentication attempt
+    try {
+      await supabase
+        .from('security_audit')
+        .insert([{
+          action: 'signup_attempt',
+          target_table: 'auth.users',
+          new_values: { email, full_name: fullName, group_name: groupName }
+        }]);
+    } catch (logError) {
+      console.warn('Failed to log signup attempt:', logError);
+    }
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -60,14 +73,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     });
+
+    // Log authentication result
+    try {
+      await supabase
+        .from('security_audit')
+        .insert([{
+          action: error ? 'signup_failed' : 'signup_success',
+          target_table: 'auth.users',
+          new_values: { email, error: error?.message || null }
+        }]);
+    } catch (logError) {
+      console.warn('Failed to log signup result:', logError);
+    }
+
     return { error };
   };
 
   const signIn = async (email: string, password: string) => {
+    // Log authentication attempt
+    try {
+      await supabase
+        .from('security_audit')
+        .insert([{
+          action: 'signin_attempt',
+          target_table: 'auth.users',
+          new_values: { email }
+        }]);
+    } catch (logError) {
+      console.warn('Failed to log signin attempt:', logError);
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
+
+    // Log authentication result
+    try {
+      await supabase
+        .from('security_audit')
+        .insert([{
+          action: error ? 'signin_failed' : 'signin_success',
+          target_table: 'auth.users',
+          new_values: { email, error: error?.message || null }
+        }]);
+    } catch (logError) {
+      console.warn('Failed to log signin result:', logError);
+    }
+
     return { error };
   };
 

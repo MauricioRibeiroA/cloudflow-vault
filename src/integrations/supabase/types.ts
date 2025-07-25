@@ -191,6 +191,45 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          target_id: string | null
+          target_table: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           created_at: string
@@ -223,6 +262,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_profile: {
+        Args: {
+          p_user_id: string
+          p_full_name?: string
+          p_email?: string
+          p_group_name?: string
+          p_status?: string
+        }
+        Returns: undefined
+      }
       has_folder_permission: {
         Args: {
           folder_id: string
@@ -234,6 +283,10 @@ export type Database = {
       is_admin: {
         Args: { user_id?: string }
         Returns: boolean
+      }
+      update_user_profile: {
+        Args: { p_user_id: string; p_full_name?: string; p_email?: string }
+        Returns: undefined
       }
     }
     Enums: {
