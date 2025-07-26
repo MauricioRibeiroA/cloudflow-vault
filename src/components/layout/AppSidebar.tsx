@@ -62,13 +62,13 @@ const menuItems: MenuItem[] = [
     title: "Logs do Sistema",
     url: "/logs",
     icon: FileText,
-    requiredGroups: ["admin", "rh", "ti"],
+    requiredGroups: ["admin", "rh"],
   },
   {
     title: "Backup",
     url: "/backup",
     icon: HardDrive,
-    requiredGroups: ["admin", "ti"],
+    requiredGroups: ["admin"],
   },
 ];
 
@@ -101,7 +101,6 @@ export function AppSidebar() {
     const labels = {
       admin: "Administrador",
       rh: "Recursos Humanos",
-      ti: "Tecnologia da Informação",
       user: "Usuário"
     };
     return labels[groupName as keyof typeof labels] || "Usuário";

@@ -48,7 +48,7 @@ const Logs = () => {
   }, [profile, actionFilter, dateFilter]);
 
   // Verificar permissões após carregar o perfil
-  if (profile && !["admin", "rh", "ti"].includes(profile.group_name)) {
+  if (profile && !["admin", "rh"].includes(profile.group_name)) {
     return <Navigate to="/dashboard" replace />;
   }
 
