@@ -81,10 +81,6 @@ export function AppSidebar() {
   const currentPath = location.pathname;
 
   const isActive = (path: string) => currentPath === path;
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive 
-      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-      : "hover:bg-sidebar-accent/50";
 
   const hasPermission = (requiredGroups?: string[]) => {
     if (!requiredGroups || !profile) return true;
@@ -151,7 +147,15 @@ export function AppSidebar() {
                 .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
+                    <NavLink 
+                      to={item.url} 
+                      end 
+                      className={({ isActive }) =>
+                        isActive 
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium flex items-center" 
+                          : "hover:bg-sidebar-accent/50 flex items-center"
+                      }
+                    >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
