@@ -269,14 +269,6 @@ const Admin = () => {
     );
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      toast.success("Logout realizado com sucesso");
-    } catch (error) {
-      toast.error("Erro ao fazer logout");
-    }
-  };
 
   // Verificar permissões após carregar dados
   if (!loading && profile && !["company_admin", "super_admin", "hr"].includes(profile.group_name)) {
@@ -301,10 +293,6 @@ const Admin = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={openCreateDialog}>

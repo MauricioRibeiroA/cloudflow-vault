@@ -3,7 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
+import { AuthProvider } from "@/components/auth/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -17,23 +18,6 @@ import Settings from "./pages/Settings";
 import Companies from "./pages/Companies";
 import NotFound from "./pages/NotFound";
 
-// Protected Route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  return user ? <>{children}</> : <Navigate to="/auth" replace />;
-};
 
 const queryClient = new QueryClient();
 
@@ -55,7 +39,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
                 <AppLayout>
                   <Admin />
                 </AppLayout>
@@ -76,14 +60,14 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/logs" element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
                 <AppLayout>
                   <Logs />
                 </AppLayout>
               </ProtectedRoute>
             } />
             <Route path="/backup" element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
                 <AppLayout>
                   <Backup />
                 </AppLayout>
@@ -97,7 +81,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/companies" element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredGroups={['super_admin']}>
                 <AppLayout>
                   <Companies />
                 </AppLayout>

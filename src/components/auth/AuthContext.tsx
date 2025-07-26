@@ -82,7 +82,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    try {
+      // Log logout attempt
+      if (user) {
+        await supabase
+          .from('security_audit')
+          .insert([{
+            action: 'logout',
+            target_table: 'auth.users',
+            new_values: { user_id: user.id }
+          }]);
+      }
+    } catch (logError) {
+      console.warn('Failed to log logout:', logError);
+    }
+
+    // Clear auth state
     await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
+    
+    // Force navigation to auth page
+    window.location.href = '/auth';
   };
 
   const value: AuthContextType = {
