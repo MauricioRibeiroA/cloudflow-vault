@@ -9,7 +9,8 @@ import {
   LogOut,
   Settings,
   Shield,
-  Upload
+  Upload,
+  Cog
 } from "lucide-react";
 import {
   Sidebar,
@@ -68,6 +69,12 @@ const menuItems: MenuItem[] = [
     title: "Backup",
     url: "/backup",
     icon: HardDrive,
+    requiredGroups: ["admin"],
+  },
+  {
+    title: "Configurações",
+    url: "/settings",
+    icon: Cog,
     requiredGroups: ["admin"],
   },
 ];

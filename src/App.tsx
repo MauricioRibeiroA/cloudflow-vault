@@ -13,6 +13,7 @@ import Upload from "./pages/Upload";
 import BusinessRules from "./pages/BusinessRules";
 import Logs from "./pages/Logs";
 import Backup from "./pages/Backup";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 // Protected Route component
@@ -84,6 +85,13 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Backup />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Settings />
                 </AppLayout>
               </ProtectedRoute>
             } />

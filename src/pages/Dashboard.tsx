@@ -46,7 +46,7 @@ const Dashboard = () => {
     totalSize: 0,
     totalUsers: 0,
     storageUsed: 0,
-    storageLimit: 20 * 1024 * 1024 * 1024, // 20GB default limit
+    storageLimit: 0, // Will be fetched from settings
     monthlyCost: 0,
     dailyUploads: 0,
     avgFileSize: 0,
@@ -77,6 +77,17 @@ const Dashboard = () => {
 
   const fetchStorageStats = async () => {
     try {
+      // Fetch storage limit from settings
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'storage_limit_gb')
+        .single();
+
+      // Default to 20GB if setting doesn't exist
+      const storageLimitGB = settingsData?.value ? Number(settingsData.value) : 20;
+      const storageLimit = storageLimitGB * 1024 * 1024 * 1024; // Convert GB to bytes
+
       // Fetch file statistics
       const { data: filesData, error: filesError } = await supabase
         .from('files')
@@ -105,9 +116,8 @@ const Dashboard = () => {
 
       const avgFileSize = totalFiles > 0 ? totalSize / totalFiles : 0;
 
-      // Storage usage calculation (simulated based on actual file sizes)
+      // Storage usage calculation (based on actual file sizes)
       const storageUsed = totalSize;
-      const storageLimit = 20 * 1024 * 1024 * 1024; // 20GB
       
       // Cost calculation (estimated based on Supabase pricing)
       const storageGB = storageUsed / (1024 * 1024 * 1024);
