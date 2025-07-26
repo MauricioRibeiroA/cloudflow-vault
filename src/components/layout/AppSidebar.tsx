@@ -8,7 +8,8 @@ import {
   HardDrive, 
   LogOut,
   Settings,
-  Shield
+  Shield,
+  Upload
 } from "lucide-react";
 import {
   Sidebar,
@@ -39,6 +40,11 @@ const menuItems: MenuItem[] = [
     title: "Dashboard",
     url: "/dashboard",
     icon: Home,
+  },
+  {
+    title: "Upload de Arquivos",
+    url: "/upload",
+    icon: Upload,
   },
   {
     title: "Colaboradores",

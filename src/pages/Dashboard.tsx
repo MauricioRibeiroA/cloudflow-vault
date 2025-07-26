@@ -1,29 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileUpload } from '@/components/ui/file-upload';
-import { FolderCreate } from '@/components/ui/folder-create';
-import { toast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { 
-  Search, 
-  Upload, 
-  Folder, 
-  File, 
-  Grid3x3, 
-  List, 
-  Download, 
-  Trash2, 
-  Eye,
-  Settings,
-  LogOut,
-  Shield,
-  Plus
+  HardDrive, 
+  Database, 
+  Users, 
+  FileText, 
+  AlertTriangle, 
+  TrendingUp, 
+  Activity,
+  DollarSign,
+  Server,
+  Zap
 } from 'lucide-react';
+
+interface StorageStats {
+  totalFiles: number;
+  totalSize: number;
+  totalUsers: number;
+  storageUsed: number;
+  storageLimit: number;
+  monthlyCost: number;
+  dailyUploads: number;
+  avgFileSize: number;
+}
 
 interface Profile {
   id: string;
@@ -33,42 +38,27 @@ interface Profile {
   status: string;
 }
 
-interface Folder {
-  id: string;
-  name: string;
-  parent_id: string | null;
-  created_at: string;
-  created_by: string;
-}
-
-interface FileItem {
-  id: string;
-  name: string;
-  file_size: number;
-  file_type: string;
-  file_path: string;
-  folder_id: string | null;
-  created_at: string;
-  uploaded_by: string;
-}
-
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [stats, setStats] = useState<StorageStats>({
+    totalFiles: 0,
+    totalSize: 0,
+    totalUsers: 0,
+    storageUsed: 0,
+    storageLimit: 20 * 1024 * 1024 * 1024, // 20GB default limit
+    monthlyCost: 0,
+    dailyUploads: 0,
+    avgFileSize: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
-      fetchFolders();
-      fetchFiles();
+      fetchStorageStats();
     }
-  }, [user, currentFolder]);
+  }, [user]);
 
   const fetchProfile = async () => {
     try {
@@ -81,374 +71,352 @@ const Dashboard = () => {
       if (error) throw error;
       setProfile(data);
     } catch (error: any) {
-      toast({
-        title: "Erro ao carregar perfil",
-        description: error.message,
-        variant: "destructive"
-      });
+      console.error('Error fetching profile:', error);
     }
   };
 
-  const fetchFolders = async () => {
+  const fetchStorageStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('folders')
-        .select('*')
-        .eq('parent_id', currentFolder)
-        .order('name');
+      // Fetch file statistics
+      const { data: filesData, error: filesError } = await supabase
+        .from('files')
+        .select('file_size, created_at');
 
-      if (error) throw error;
-      setFolders(data || []);
+      if (filesError) throw filesError;
+
+      // Fetch user count
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, status');
+
+      if (usersError) throw usersError;
+
+      // Calculate statistics
+      const totalFiles = filesData?.length || 0;
+      const totalSize = filesData?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
+      const totalUsers = usersData?.filter(u => u.status === 'active').length || 0;
+      
+      // Calculate daily uploads (last 24 hours)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const dailyUploads = filesData?.filter(file => 
+        new Date(file.created_at) > yesterday
+      ).length || 0;
+
+      const avgFileSize = totalFiles > 0 ? totalSize / totalFiles : 0;
+
+      // Storage usage calculation (simulated based on actual file sizes)
+      const storageUsed = totalSize;
+      const storageLimit = 20 * 1024 * 1024 * 1024; // 20GB
+      
+      // Cost calculation (estimated based on Supabase pricing)
+      const storageGB = storageUsed / (1024 * 1024 * 1024);
+      const monthlyCost = Math.max(0, (storageGB - 1) * 0.021); // $0.021 per GB after first 1GB
+
+      setStats({
+        totalFiles,
+        totalSize,
+        totalUsers,
+        storageUsed,
+        storageLimit,
+        monthlyCost,
+        dailyUploads,
+        avgFileSize,
+      });
     } catch (error: any) {
-      console.error('Error fetching folders:', error);
+      console.error('Error fetching storage stats:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchFiles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('files')
-        .select('*')
-        .eq('folder_id', currentFolder)
-        .order('name');
-
-      if (error) throw error;
-      setFiles(data || []);
-    } catch (error: any) {
-      console.error('Error fetching files:', error);
-    }
-  };
-
-  const refreshData = () => {
-    fetchFolders();
-    fetchFiles();
-  };
-
-  const handleDownload = async (file: FileItem) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('files')
-        .download(file.file_path);
-
-      if (error) throw error;
-
-      // Create download link
-      const url = window.URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      // Log download action
-      await supabase
-        .from('logs')
-        .insert({
-          user_id: user?.id,
-          action: 'file_download',
-          target_type: 'file',
-          target_id: file.id,
-          target_name: file.name,
-          details: {
-            file_size: file.file_size,
-            file_type: file.file_type,
-            folder_id: file.folder_id
-          }
-        });
-
-      toast({
-        title: "Download iniciado",
-        description: `${file.name} está sendo baixado.`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro no download",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDelete = async (file: FileItem) => {
-    if (!confirm(`Tem certeza que deseja excluir "${file.name}"?`)) return;
-
-    try {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('files')
-        .remove([file.file_path]);
-
-      if (storageError) throw storageError;
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from('files')
-        .delete()
-        .eq('id', file.id);
-
-      if (dbError) throw dbError;
-
-      // Log deletion
-      await supabase
-        .from('logs')
-        .insert({
-          user_id: user?.id,
-          action: 'file_delete',
-          target_type: 'file',
-          target_id: file.id,
-          target_name: file.name,
-          details: {
-            file_size: file.file_size,
-            file_type: file.file_type,
-            folder_id: file.folder_id
-          }
-        });
-
-      toast({
-        title: "Arquivo excluído",
-        description: `${file.name} foi excluído com sucesso.`
-      });
-
-      refreshData();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao excluir",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-  };
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const filteredFolders = folders.filter(folder =>
-    folder.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
 
-  const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getStorageUsagePercentage = () => {
+    return (stats.storageUsed / stats.storageLimit) * 100;
+  };
+
+  const getUsageColor = (percentage: number) => {
+    if (percentage > 90) return 'text-red-600';
+    if (percentage > 75) return 'text-yellow-600';
+    return 'text-green-600';
+  };
+
+  const getUsageVariant = (percentage: number) => {
+    if (percentage > 90) return 'destructive';
+    if (percentage > 75) return 'default';
+    return 'default';
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
+  const storagePercentage = getStorageUsagePercentage();
+  const isStorageCritical = storagePercentage > 90;
+  const isStorageWarning = storagePercentage > 75;
+
   return (
-    <div className="min-h-screen bg-gradient-surface">
+    <div className="space-y-6">
       {/* Header */}
-      <header className="bg-card shadow-soft border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <Shield className="h-8 w-8 text-primary" />
-              <h1 className="text-xl font-bold text-foreground">CloudFlow Vault</h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Monitoramento de armazenamento e recursos do sistema
+          </p>
+        </div>
+        {profile && (
+          <div className="text-right">
+            <p className="text-sm font-medium text-foreground">{profile.full_name}</p>
+            <Badge variant="secondary" className="text-xs">
+              {profile.group_name.toUpperCase()}
+            </Badge>
+          </div>
+        )}
+      </div>
+
+      {/* Alerts */}
+      {isStorageCritical && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Armazenamento Crítico!</AlertTitle>
+          <AlertDescription>
+            O uso de armazenamento está em {storagePercentage.toFixed(1)}%. 
+            É necessário limpar arquivos ou aumentar o limite.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isStorageWarning && !isStorageCritical && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Aviso de Armazenamento</AlertTitle>
+          <AlertDescription>
+            O uso de armazenamento está em {storagePercentage.toFixed(1)}%. 
+            Considere revisar os arquivos armazenados.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Main Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Armazenamento</CardTitle>
+            <HardDrive className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatFileSize(stats.storageUsed)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              de {formatFileSize(stats.storageLimit)} usados
+            </p>
+            <div className="mt-2">
+              <Progress 
+                value={storagePercentage} 
+                className="h-2"
+              />
+            </div>
+            <p className={`text-xs mt-1 ${getUsageColor(storagePercentage)}`}>
+              {storagePercentage.toFixed(1)}% utilizado
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Custo Mensal</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(stats.monthlyCost)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Baseado no uso atual
+            </p>
+            <div className="mt-2">
+              <Badge variant={stats.monthlyCost > 5 ? "destructive" : "default"}>
+                {stats.monthlyCost > 5 ? "Alto" : "Normal"}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Arquivos</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalFiles.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              +{stats.dailyUploads} hoje
+            </p>
+            <div className="mt-2">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-600" />
+                <span className="text-xs text-green-600">
+                  {stats.dailyUploads} uploads hoje
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuários Ativos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              Total de usuários ativos
+            </p>
+            <div className="mt-2">
+              <Badge variant="outline">
+                Sistema ativo
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detailed Statistics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Storage Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Detalhes do Armazenamento
+            </CardTitle>
+            <CardDescription>
+              Informações detalhadas sobre o uso de armazenamento
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Espaço usado:</span>
+              <span className="font-medium">{formatFileSize(stats.storageUsed)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Espaço disponível:</span>
+              <span className="font-medium">{formatFileSize(stats.storageLimit - stats.storageUsed)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Limite total:</span>
+              <span className="font-medium">{formatFileSize(stats.storageLimit)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Tamanho médio por arquivo:</span>
+              <span className="font-medium">{formatFileSize(stats.avgFileSize)}</span>
             </div>
             
-            <div className="flex items-center gap-4">
-              {profile && (
-                <div className="text-right">
-                  <p className="text-sm font-medium text-foreground">{profile.full_name}</p>
-                  <Badge variant="secondary" className="text-xs">
-                    {profile.group_name.toUpperCase()}
-                  </Badge>
-                </div>
-              )}
-              
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4" />
-                </Button>
+            <div className="mt-4 p-3 bg-muted rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Status do Sistema:</span>
+                <Badge variant={isStorageCritical ? "destructive" : isStorageWarning ? "default" : "default"}>
+                  {isStorageCritical ? "Crítico" : isStorageWarning ? "Atenção" : "Normal"}
+                </Badge>
               </div>
             </div>
-          </div>
-        </div>
-      </header>
+          </CardContent>
+        </Card>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Search and Controls */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Buscar arquivos e pastas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => setViewMode('grid')}>
-              <Grid3x3 className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => setViewMode('list')}>
-              <List className="h-4 w-4" />
-            </Button>
-            <FileUpload currentFolder={currentFolder} onUploadComplete={refreshData} />
-            <FolderCreate currentFolder={currentFolder} onFolderCreated={refreshData} />
-          </div>
-        </div>
+        {/* Performance Metrics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Métricas de Performance
+            </CardTitle>
+            <CardDescription>
+              Estatísticas de uso e performance do sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Uploads hoje:</span>
+              <span className="font-medium">{stats.dailyUploads}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Total de arquivos:</span>
+              <span className="font-medium">{stats.totalFiles.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Usuários ativos:</span>
+              <span className="font-medium">{stats.totalUsers}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Custo estimado/mês:</span>
+              <span className="font-medium">{formatCurrency(stats.monthlyCost)}</span>
+            </div>
 
-        {/* Breadcrumb */}
-        {currentFolder && (
-          <nav className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCurrentFolder(null)}
-              className="text-primary"
-            >
-              Início
-            </Button>
-            <span>/</span>
-            <span>Pasta Atual</span>
-          </nav>
-        )}
-
-        {/* Content */}
-        <Tabs defaultValue="files" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="files">Arquivos e Pastas</TabsTrigger>
-            <TabsTrigger value="recent">Recentes</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="files" className="space-y-6">
-            {/* Folders */}
-            {filteredFolders.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <Folder className="h-5 w-5 text-primary" />
-                  Pastas
-                </h3>
-                <div className={viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4' : 'space-y-2'}>
-                  {filteredFolders.map((folder) => (
-                    <Card
-                      key={folder.id}
-                      className="cursor-pointer hover:shadow-medium transition-all duration-200 border-l-4 border-l-primary"
-                      onClick={() => setCurrentFolder(folder.id)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <Folder className="h-8 w-8 text-primary" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{folder.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(folder.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+            <div className="mt-4 p-3 bg-muted rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Eficiência de Custo:</span>
+                <Badge variant={stats.monthlyCost < 2 ? "default" : stats.monthlyCost < 5 ? "default" : "destructive"}>
+                  {stats.monthlyCost < 2 ? "Ótima" : stats.monthlyCost < 5 ? "Boa" : "Revisar"}
+                </Badge>
               </div>
-            )}
-
-            {/* Files */}
-            {filteredFiles.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <File className="h-5 w-5 text-primary" />
-                  Arquivos
-                </h3>
-                <div className={viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4' : 'space-y-2'}>
-                  {filteredFiles.map((file) => (
-                    <Card key={file.id} className="hover:shadow-medium transition-all duration-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <File className="h-8 w-8 text-muted-foreground" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{file.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatFileSize(file.file_size)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(file.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 mt-3">
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-8 w-8"
-                            onClick={() => handleDownload(file)}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => handleDelete(file)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {filteredFolders.length === 0 && filteredFiles.length === 0 && (
-              <Card className="text-center py-12">
-                <CardContent>
-                  <Folder className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <CardTitle className="mb-2">Nenhum arquivo encontrado</CardTitle>
-                  <CardDescription className="mb-6">
-                    {searchTerm ? 'Nenhum resultado para sua busca.' : 'Esta pasta está vazia. Faça upload de arquivos ou crie novas pastas.'}
-                  </CardDescription>
-                  <div className="flex items-center justify-center gap-2">
-                    <FileUpload currentFolder={currentFolder} onUploadComplete={refreshData} />
-                    <FolderCreate currentFolder={currentFolder} onFolderCreated={refreshData} />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="recent">
-            <Card>
-              <CardHeader>
-                <CardTitle>Arquivos Recentes</CardTitle>
-                <CardDescription>
-                  Seus arquivos mais recentemente acessados
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Em desenvolvimento...</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            Ações Rápidas
+          </CardTitle>
+          <CardDescription>
+            Gerenciar e otimizar o uso do sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            <Button variant="outline" size="sm">
+              <Server className="mr-2 h-4 w-4" />
+              Limpar Cache
+            </Button>
+            <Button variant="outline" size="sm">
+              <Database className="mr-2 h-4 w-4" />
+              Otimizar BD
+            </Button>
+            <Button variant="outline" size="sm">
+              <HardDrive className="mr-2 h-4 w-4" />
+              Verificar Espaço
+            </Button>
+            <Button variant="outline" size="sm">
+              <Activity className="mr-2 h-4 w-4" />
+              Relatório de Uso
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

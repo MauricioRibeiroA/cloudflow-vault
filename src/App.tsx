@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import Upload from "./pages/Upload";
 import BusinessRules from "./pages/BusinessRules";
 import Logs from "./pages/Logs";
 import Backup from "./pages/Backup";
@@ -55,6 +56,13 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Admin />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/upload" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Upload />
                 </AppLayout>
               </ProtectedRoute>
             } />
