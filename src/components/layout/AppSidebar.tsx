@@ -52,7 +52,7 @@ const menuItems: MenuItem[] = [
     title: "Colaboradores",
     url: "/admin",
     icon: Users,
-    requiredGroups: ["company_admin", "super_admin"],
+    requiredGroups: ["company_admin", "super_admin", "hr"],
   },
   {
     title: "Empresas",
@@ -115,6 +115,7 @@ export function AppSidebar() {
     const labels = {
       super_admin: "Super Admin",
       company_admin: "Admin da Empresa",
+      hr: "RH",
       user: "Colaborador"
     };
     return labels[groupName as keyof typeof labels] || "Colaborador";

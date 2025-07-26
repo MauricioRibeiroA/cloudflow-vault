@@ -243,12 +243,14 @@ const Admin = () => {
     const variants = {
       super_admin: "destructive",
       company_admin: "default",
+      hr: "secondary",
       user: "outline",
     } as const;
 
     const labels = {
       super_admin: "Gestor do Sistema",
       company_admin: "Admin da Empresa",
+      hr: "RH",
       user: "Usuário",
     };
 
@@ -277,7 +279,7 @@ const Admin = () => {
   };
 
   // Verificar permissões após carregar dados
-  if (!loading && profile && !["company_admin", "super_admin"].includes(profile.group_name)) {
+  if (!loading && profile && !["company_admin", "super_admin", "hr"].includes(profile.group_name)) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -372,7 +374,12 @@ const Admin = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">Usuário</SelectItem>
-                      <SelectItem value="company_admin">Admin da Empresa</SelectItem>
+                      {(profile?.group_name === "company_admin" || profile?.group_name === "super_admin") && (
+                        <SelectItem value="hr">RH</SelectItem>
+                      )}
+                      {profile?.group_name === "company_admin" && (
+                        <SelectItem value="company_admin">Admin da Empresa</SelectItem>
+                      )}
                       {profile?.group_name === "super_admin" && (
                         <SelectItem value="super_admin">Gestor do Sistema</SelectItem>
                       )}
