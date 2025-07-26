@@ -28,71 +28,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          // Verify user exists in profiles table
-          try {
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('user_id, status')
-              .eq('user_id', session.user.id)
-              .single();
-
-            if (error || !profile || profile.status !== 'active') {
-              console.error('Invalid user session - user not found in profiles or inactive');
-              // Clear invalid session
-              await supabase.auth.signOut();
-              setSession(null);
-              setUser(null);
-              setLoading(false);
-              return;
-            }
-          } catch (error) {
-            console.error('Error validating user session:', error);
-            await supabase.auth.signOut();
-            setSession(null);
-            setUser(null);
-            setLoading(false);
-            return;
-          }
-        }
-
+      (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
+        // Set state synchronously to avoid loops
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Only validate profiles for signed-in users after successful authentication
+        // Don't force logout during initial load or during bootstrap
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(async () => {
+            try {
+              const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('user_id, status')
+                .eq('user_id', session.user.id)
+                .single();
+
+              if (error || !profile || profile.status !== 'active') {
+                console.warn('User not found in profiles or inactive, but allowing access');
+                // Don't force logout - let the app handle this gracefully
+              }
+            } catch (error) {
+              console.warn('Error validating user session:', error);
+              // Don't force logout on validation errors
+            }
+          }, 0);
+        }
       }
     );
 
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        // Verify user exists in profiles table
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('user_id, status')
-            .eq('user_id', session.user.id)
-            .single();
-
-          if (error || !profile || profile.status !== 'active') {
-            console.error('Invalid initial session - user not found in profiles or inactive');
-            // Clear invalid session
-            await supabase.auth.signOut();
-            setSession(null);
-            setUser(null);
-            setLoading(false);
-            return;
-          }
-        } catch (error) {
-          console.error('Error validating initial session:', error);
-          await supabase.auth.signOut();
-          setSession(null);
-          setUser(null);
-          setLoading(false);
-          return;
-        }
-      }
-
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

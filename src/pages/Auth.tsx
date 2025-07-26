@@ -49,10 +49,12 @@ const Auth = () => {
   }, []);
 
   // Redirect if already authenticated
-  if (user && !loading) {
-    navigate("/dashboard");
-    return null;
-  }
+  useEffect(() => {
+    if (user && !checkingBootstrap) {
+      console.log('User authenticated, redirecting to dashboard');
+      navigate("/dashboard");
+    }
+  }, [user, checkingBootstrap, navigate]);
 
   if (checkingBootstrap) {
     return (
