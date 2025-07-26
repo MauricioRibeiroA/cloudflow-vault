@@ -220,35 +220,56 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          department_id: string | null
           email: string
           full_name: string
           group_name: string
           id: string
+          position_id: string | null
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          department_id?: string | null
           email: string
           full_name: string
           group_name?: string
           id?: string
+          position_id?: string | null
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          department_id?: string | null
           email?: string
           full_name?: string
           group_name?: string
           id?: string
+          position_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_audit: {
         Row: {
@@ -322,13 +343,23 @@ export type Database = {
     }
     Functions: {
       admin_update_profile: {
-        Args: {
-          p_user_id: string
-          p_full_name?: string
-          p_email?: string
-          p_group_name?: string
-          p_status?: string
-        }
+        Args:
+          | {
+              p_user_id: string
+              p_full_name?: string
+              p_email?: string
+              p_group_name?: string
+              p_status?: string
+            }
+          | {
+              p_user_id: string
+              p_full_name?: string
+              p_email?: string
+              p_group_name?: string
+              p_status?: string
+              p_department_id?: string
+              p_position_id?: string
+            }
         Returns: undefined
       }
       has_folder_permission: {

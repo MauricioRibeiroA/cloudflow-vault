@@ -6,14 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Users, UserPlus, Edit, Trash2, Shield } from "lucide-react";
+import { Users, UserPlus, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
@@ -24,36 +20,41 @@ interface Profile {
   email: string;
   group_name: string;
   status: string;
+  department_id?: string;
+  position_id?: string;
+  department?: { id: string; name: string };
+  position?: { id: string; name: string };
   created_at: string;
 }
 
-const userFormSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres").optional(),
-  full_name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  group_name: z.enum(["user", "rh", "admin", "ti"]),
-  status: z.enum(["active", "inactive"]),
-});
+interface Department {
+  id: string;
+  name: string;
+}
 
-type UserFormData = z.infer<typeof userFormSchema>;
+interface Position {
+  id: string;
+  name: string;
+  department_id: string;
+}
 
 const Admin = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
-
-  const form = useForm<UserFormData>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      full_name: "",
-      group_name: "user",
-      status: "active",
-    },
+  const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    group_name: "user",
+    status: "active",
+    department_id: "",
+    position_id: "",
   });
 
   const fetchCurrentProfile = async () => {
@@ -71,7 +72,11 @@ const Admin = () => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select(`
+          *,
+          department:departments(id, name),
+          position:positions(id, name)
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -84,21 +89,42 @@ const Admin = () => {
     }
   };
 
+  const fetchDepartmentsAndPositions = async () => {
+    try {
+      // Fetch departments
+      const { data: deptData } = await supabase
+        .from("departments")
+        .select("*")
+        .order("name");
+      setDepartments(deptData || []);
+
+      // Fetch positions
+      const { data: posData } = await supabase
+        .from("positions")
+        .select("*")
+        .order("name");
+      setPositions(posData || []);
+    } catch (error) {
+      console.error("Erro ao carregar setores e cargos:", error);
+    }
+  };
+
   useEffect(() => {
     fetchCurrentProfile();
     fetchProfiles();
+    fetchDepartmentsAndPositions();
   }, [user]);
 
-  const handleCreateUser = async (data: UserFormData) => {
+  const handleCreateUser = async () => {
     try {
       // Criar usuário no auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password || "",
+        email: formData.email,
+        password: formData.password,
         options: {
           data: {
-            full_name: data.full_name,
-            group_name: data.group_name,
+            full_name: formData.full_name,
+            group_name: formData.group_name,
           },
         },
       });
@@ -109,10 +135,12 @@ const Admin = () => {
         // Atualizar perfil diretamente usando função admin
         const { error: updateError } = await supabase.rpc("admin_update_profile", {
           p_user_id: authData.user.id,
-          p_full_name: data.full_name,
-          p_email: data.email,
-          p_group_name: data.group_name,
-          p_status: data.status,
+          p_full_name: formData.full_name,
+          p_email: formData.email,
+          p_group_name: formData.group_name,
+          p_status: formData.status,
+          p_department_id: formData.department_id || null,
+          p_position_id: formData.position_id || null,
         });
 
         if (updateError) throw updateError;
@@ -120,7 +148,7 @@ const Admin = () => {
 
       toast.success("Usuário criado com sucesso");
       setDialogOpen(false);
-      form.reset();
+      resetForm();
       fetchProfiles();
     } catch (error: any) {
       console.error("Erro ao criar usuário:", error);
@@ -128,16 +156,18 @@ const Admin = () => {
     }
   };
 
-  const handleUpdateUser = async (data: UserFormData) => {
+  const handleUpdateUser = async () => {
     if (!editingUser) return;
 
     try {
       const { error } = await supabase.rpc("admin_update_profile", {
         p_user_id: editingUser.user_id,
-        p_full_name: data.full_name,
-        p_email: data.email,
-        p_group_name: data.group_name,
-        p_status: data.status,
+        p_full_name: formData.full_name,
+        p_email: formData.email,
+        p_group_name: formData.group_name,
+        p_status: formData.status,
+        p_department_id: formData.department_id || null,
+        p_position_id: formData.position_id || null,
       });
 
       if (error) throw error;
@@ -145,7 +175,7 @@ const Admin = () => {
       toast.success("Usuário atualizado com sucesso");
       setDialogOpen(false);
       setEditingUser(null);
-      form.reset();
+      resetForm();
       fetchProfiles();
     } catch (error: any) {
       console.error("Erro ao atualizar usuário:", error);
@@ -172,28 +202,41 @@ const Admin = () => {
     }
   };
 
-  const openCreateDialog = () => {
-    setEditingUser(null);
-    form.reset({
+  const resetForm = () => {
+    setFormData({
+      full_name: "",
       email: "",
       password: "",
-      full_name: "",
       group_name: "user",
       status: "active",
+      department_id: "",
+      position_id: "",
     });
+  };
+
+  const openCreateDialog = () => {
+    setEditingUser(null);
+    resetForm();
     setDialogOpen(true);
   };
 
   const openEditDialog = (user: Profile) => {
     setEditingUser(user);
-    form.reset({
-      email: user.email,
-      password: "", // Não mostrar senha atual
+    setFormData({
       full_name: user.full_name,
-      group_name: user.group_name as any,
-      status: user.status as any,
+      email: user.email,
+      password: "",
+      group_name: user.group_name,
+      status: user.status,
+      department_id: user.department_id || "",
+      position_id: user.position_id || "",
     });
     setDialogOpen(true);
+  };
+
+  const getFilteredPositions = () => {
+    if (!formData.department_id) return [];
+    return positions.filter(pos => pos.department_id === formData.department_id);
   };
 
   const getGroupBadge = (group: string) => {
@@ -243,7 +286,7 @@ const Admin = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Administração de Usuários</h1>
+          <h1 className="text-3xl font-bold text-foreground">Colaboradores</h1>
           <p className="text-muted-foreground">
             Gerencie usuários, grupos e permissões do sistema
           </p>
@@ -255,7 +298,7 @@ const Admin = () => {
               Novo Usuário
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>
                 {editingUser ? "Editar Usuário" : "Criar Novo Usuário"}
@@ -266,121 +309,147 @@ const Admin = () => {
                   : "Adicione um novo usuário ao sistema."}
               </DialogDescription>
             </DialogHeader>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(editingUser ? handleUpdateUser : handleCreateUser)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={form.control}
-                  name="full_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome Completo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite o nome completo" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="Digite o email"
-                          {...field}
-                          disabled={!!editingUser}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {!editingUser && (
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Senha</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Digite a senha"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="full_name">Nome Completo</Label>
+                  <Input
+                    id="full_name"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    placeholder="Nome completo"
                   />
-                )}
-                <FormField
-                  control={form.control}
-                  name="group_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Grupo</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o grupo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="user">Usuário</SelectItem>
-                          <SelectItem value="rh">RH</SelectItem>
-                          <SelectItem value="ti">TI</SelectItem>
-                          {profile?.group_name === "admin" && (
-                            <SelectItem value="admin">Admin</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="active">Ativo</SelectItem>
-                          <SelectItem value="inactive">Inativo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button type="submit">
-                    {editingUser ? "Atualizar" : "Criar"}
-                  </Button>
                 </div>
-              </form>
-            </Form>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="email@exemplo.com"
+                    disabled={!!editingUser}
+                  />
+                </div>
+              </div>
+
+              {!editingUser && (
+                <div>
+                  <Label htmlFor="password">Senha</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Senha"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="group">Grupo de Acesso</Label>
+                  <Select
+                    value={formData.group_name}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, group_name: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">Usuário</SelectItem>
+                      <SelectItem value="rh">Recursos Humanos</SelectItem>
+                      <SelectItem value="ti">TI</SelectItem>
+                      {profile?.group_name === "admin" && (
+                        <SelectItem value="admin">Administrador</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, status: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="department">Setor</Label>
+                  <Select
+                    value={formData.department_id}
+                    onValueChange={(value) => {
+                      setFormData({ 
+                        ...formData, 
+                        department_id: value,
+                        position_id: "" // Reset position when department changes
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="position">Cargo</Label>
+                  <Select
+                    value={formData.position_id}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, position_id: value })
+                    }
+                    disabled={!formData.department_id}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getFilteredPositions().map((pos) => (
+                        <SelectItem key={pos.id} value={pos.id}>
+                          {pos.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={editingUser ? handleUpdateUser : handleCreateUser}>
+                  {editingUser ? "Atualizar" : "Criar"}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -401,9 +470,11 @@ const Admin = () => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Setor</TableHead>
+                <TableHead>Cargo</TableHead>
                 <TableHead>Grupo</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Criado em</TableHead>
+                <TableHead>Data de Criação</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -412,6 +483,16 @@ const Admin = () => {
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.full_name}</TableCell>
                   <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {user.department?.name || 'Não definido'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {user.position?.name || 'Não definido'}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{getGroupBadge(user.group_name)}</TableCell>
                   <TableCell>{getStatusBadge(user.status)}</TableCell>
                   <TableCell>
@@ -437,6 +518,13 @@ const Admin = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {profiles.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    Nenhum usuário encontrado
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
