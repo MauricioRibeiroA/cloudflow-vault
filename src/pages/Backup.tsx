@@ -56,11 +56,6 @@ const Backup = () => {
     },
   });
 
-  // Verificar permissões
-  if (!profile || !["admin", "ti"].includes(profile.group_name)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const fetchCurrentProfile = async () => {
     if (user) {
       const { data } = await supabase
@@ -216,6 +211,11 @@ const Backup = () => {
       </Badge>
     );
   };
+
+  // Verificar permissões após carregar dados
+  if (!loading && profile && !["admin", "ti"].includes(profile.group_name)) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   if (loading) {
     return (
