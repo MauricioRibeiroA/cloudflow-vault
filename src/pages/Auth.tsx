@@ -6,25 +6,21 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { toast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Lock, Mail, User, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
-import { loginSchema, signUpSchema, type LoginFormData, type SignUpFormData } from "@/lib/validation";
+import { loginSchema } from "@/lib/validation";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { signIn, user } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Redirect if already authenticated
-  const { user } = useAuth();
   if (user && !loading) {
     navigate("/dashboard");
     return null;
@@ -37,10 +33,9 @@ const Auth = () => {
 
     try {
       // Validate form data
-      const formData = isLogin ? { email, password } : { email, password, fullName };
-      const schema = isLogin ? loginSchema : signUpSchema;
+      const formData = { email, password };
+      const validationResult = loginSchema.safeParse(formData);
       
-      const validationResult = schema.safeParse(formData);
       if (!validationResult.success) {
         const errors: Record<string, string> = {};
         validationResult.error.issues.forEach((error) => {
@@ -53,45 +48,19 @@ const Auth = () => {
         return;
       }
 
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) {
-          // Generic error message for security
-          toast({
-            title: "Erro no login",
-            description: "Email ou senha incorretos. Tente novamente.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Login realizado com sucesso!",
-            description: "Bem-vindo ao CloudFlow Vault.",
-          });
-          navigate("/dashboard");
-        }
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({
+          title: "Erro no login",
+          description: "Email ou senha incorretos. Tente novamente.",
+          variant: "destructive",
+        });
       } else {
-        const { error } = await signUp(email, password, fullName);
-        if (error) {
-          // More specific error handling for signup
-          let errorMessage = "Ocorreu um erro durante o cadastro.";
-          if (error.message.includes("already registered")) {
-            errorMessage = "Este email já está cadastrado. Tente fazer login.";
-          } else if (error.message.includes("Password")) {
-            errorMessage = "A senha não atende aos requisitos de segurança.";
-          }
-          
-          toast({
-            title: "Erro no cadastro",
-            description: errorMessage,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Cadastro realizado com sucesso!",
-            description: "Verifique seu email para confirmar a conta.",
-          });
-          setIsLogin(true);
-        }
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo ao CloudFlow Vault.",
+        });
+        navigate("/dashboard");
       }
     } catch (error) {
       toast({
@@ -114,44 +83,16 @@ const Auth = () => {
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-foreground">
-                {isLogin ? "Bem-vindo de volta" : "Criar conta"}
+                Bem-vindo de volta
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-2">
-                {isLogin
-                  ? "Faça login para acessar o CloudFlow Vault"
-                  : "Crie sua conta para começar a usar o sistema"}
+                Faça login para acessar o CloudFlow Vault
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-sm font-medium">
-                    Nome Completo
-                  </Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      id="fullName"
-                      type="text"
-                      placeholder="Digite seu nome completo"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className={`pl-10 ${validationErrors.fullName ? 'border-destructive' : ''}`}
-                      required
-                    />
-                    {validationErrors.fullName && (
-                      <div className="flex items-center gap-2 text-sm text-destructive mt-1">
-                        <AlertCircle className="h-4 w-4" />
-                        {validationErrors.fullName}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
                   Email
@@ -185,7 +126,7 @@ const Auth = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder={isLogin ? "Digite sua senha" : "Crie uma senha segura"}
+                    placeholder="Digite sua senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={`pl-10 pr-10 ${validationErrors.password ? 'border-destructive' : ''}`}
@@ -207,22 +148,6 @@ const Auth = () => {
                 </div>
               </div>
 
-
-              {!isLogin && (
-                <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">
-                    Requisitos da senha:
-                  </Label>
-                  <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>• Mínimo de 8 caracteres</li>
-                    <li>• Pelo menos uma letra maiúscula</li>
-                    <li>• Pelo menos uma letra minúscula</li>
-                    <li>• Pelo menos um número</li>
-                    <li>• Pelo menos um caractere especial</li>
-                  </ul>
-                </div>
-              )}
-
               <Button
                 type="submit"
                 className="w-full"
@@ -232,24 +157,17 @@ const Auth = () => {
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    {isLogin ? "Entrando..." : "Criando conta..."}
+                    Entrando...
                   </div>
                 ) : (
-                  isLogin ? "Entrar" : "Criar conta"
+                  "Entrar"
                 )}
               </Button>
 
               <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsLogin(!isLogin);
-                    setValidationErrors({});
-                  }}
-                  className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
-                >
-                  {isLogin ? "Não tem uma conta? Cadastre-se" : "Já tem uma conta? Faça login"}
-                </button>
+                <p className="text-sm text-muted-foreground">
+                  Não tem uma conta? Entre em contato com o administrador.
+                </p>
               </div>
             </form>
           </CardContent>

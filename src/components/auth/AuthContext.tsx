@@ -6,7 +6,6 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
@@ -46,50 +45,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    const groupName = 'user'; // Always set to 'user' for public registration
-    
-    // Log authentication attempt
-    try {
-      await supabase
-        .from('security_audit')
-        .insert([{
-          action: 'signup_attempt',
-          target_table: 'auth.users',
-          new_values: { email, full_name: fullName, group_name: groupName }
-        }]);
-    } catch (logError) {
-      console.warn('Failed to log signup attempt:', logError);
-    }
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-          group_name: groupName
-        }
-      }
-    });
-
-    // Log authentication result
-    try {
-      await supabase
-        .from('security_audit')
-        .insert([{
-          action: error ? 'signup_failed' : 'signup_success',
-          target_table: 'auth.users',
-          new_values: { email, error: error?.message || null }
-        }]);
-    } catch (logError) {
-      console.warn('Failed to log signup result:', logError);
-    }
-
-    return { error };
-  };
 
   const signIn = async (email: string, password: string) => {
     // Log authentication attempt
@@ -134,7 +89,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     session,
     loading,
-    signUp,
     signIn,
     signOut
   };

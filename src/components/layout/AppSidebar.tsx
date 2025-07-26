@@ -10,7 +10,8 @@ import {
   Settings,
   Shield,
   Upload,
-  Cog
+  Cog,
+  Building2
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,31 +52,37 @@ const menuItems: MenuItem[] = [
     title: "Colaboradores",
     url: "/admin",
     icon: Users,
-    requiredGroups: ["admin", "rh"],
+    requiredGroups: ["company_admin", "super_admin"],
+  },
+  {
+    title: "Empresas",
+    url: "/companies",
+    icon: Building2,
+    requiredGroups: ["super_admin"],
   },
   {
     title: "Regras de Negócio",
     url: "/business-rules",
     icon: Settings,
-    requiredGroups: ["admin", "rh"],
+    requiredGroups: ["company_admin", "super_admin"],
   },
   {
     title: "Logs do Sistema",
     url: "/logs",
     icon: FileText,
-    requiredGroups: ["admin", "rh"],
+    requiredGroups: ["company_admin", "super_admin"],
   },
   {
     title: "Backup",
     url: "/backup",
     icon: HardDrive,
-    requiredGroups: ["admin"],
+    requiredGroups: ["company_admin", "super_admin"],
   },
   {
     title: "Configurações",
     url: "/settings",
     icon: Cog,
-    requiredGroups: ["admin"],
+    requiredGroups: ["company_admin", "super_admin"],
   },
 ];
 
@@ -106,11 +113,11 @@ export function AppSidebar() {
 
   const getGroupLabel = (groupName: string) => {
     const labels = {
-      admin: "Administrador",
-      rh: "Recursos Humanos",
-      user: "Usuário"
+      super_admin: "Super Admin",
+      company_admin: "Admin da Empresa",
+      user: "Colaborador"
     };
-    return labels[groupName as keyof typeof labels] || "Usuário";
+    return labels[groupName as keyof typeof labels] || "Colaborador";
   };
 
   useEffect(() => {
