@@ -39,8 +39,7 @@ export const loginSchema = z.object({
 export const signUpSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
-  fullName: fullNameSchema,
-  groupName: groupNameSchema
+  fullName: fullNameSchema
 });
 
 // Profile update validation schema

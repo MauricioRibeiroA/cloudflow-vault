@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { toast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Lock, Mail, User, Users, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User, AlertCircle } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import { loginSchema, signUpSchema, type LoginFormData, type SignUpFormData } from "@/lib/validation";
 
@@ -17,7 +17,6 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [groupName, setGroupName] = useState("user");
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -38,7 +37,7 @@ const Auth = () => {
 
     try {
       // Validate form data
-      const formData = { email, password, fullName, groupName };
+      const formData = isLogin ? { email, password } : { email, password, fullName };
       const schema = isLogin ? loginSchema : signUpSchema;
       
       const validationResult = schema.safeParse(formData);
@@ -71,7 +70,7 @@ const Auth = () => {
           navigate("/dashboard");
         }
       } else {
-        const { error } = await signUp(email, password, fullName, groupName);
+        const { error } = await signUp(email, password, fullName);
         if (error) {
           // More specific error handling for signup
           let errorMessage = "Ocorreu um erro durante o cadastro.";
@@ -208,32 +207,6 @@ const Auth = () => {
                 </div>
               </div>
 
-              {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="groupName" className="text-sm font-medium">
-                    Grupo
-                  </Label>
-                  <div className="relative">
-                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 z-10" />
-                    <Select value={groupName} onValueChange={setGroupName}>
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Selecione seu grupo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="user">Usuário</SelectItem>
-                        <SelectItem value="rh">Recursos Humanos</SelectItem>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {validationErrors.groupName && (
-                      <div className="flex items-center gap-2 text-sm text-destructive mt-1">
-                        <AlertCircle className="h-4 w-4" />
-                        {validationErrors.groupName}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {!isLogin && (
                 <div className="space-y-2">
