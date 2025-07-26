@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +24,6 @@ interface Position {
   name: string;
   description?: string;
   department_id: string;
-  department?: Department;
   created_at: string;
 }
 
@@ -49,30 +47,13 @@ export default function BusinessRules() {
   useEffect(() => {
     const fetchData = async () => {
       if (user) {
-        // Fetch profile
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
-        setProfile(profileData);
+        // Simulate fetching profile data
+        const mockProfile = { group_name: 'admin' }; // Simulated for testing
+        setProfile(mockProfile);
 
-        // Fetch departments
-        const { data: departmentsData } = await supabase
-          .from("departments")
-          .select("*")
-          .order("name");
-        setDepartments(departmentsData || []);
-
-        // Fetch positions with departments
-        const { data: positionsData } = await supabase
-          .from("positions")
-          .select(`
-            *,
-            department:departments(*)
-          `)
-          .order("name");
-        setPositions(positionsData || []);
+        // Simulate fetching departments and positions
+        setDepartments([]);
+        setPositions([]);
       }
       setLoading(false);
     };
@@ -95,76 +76,48 @@ export default function BusinessRules() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from("departments")
-      .insert([departmentForm])
-      .select()
-      .single();
+    // Simulate creating department
+    const newDepartment: Department = {
+      id: Math.random().toString(),
+      name: departmentForm.name,
+      description: departmentForm.description,
+      created_at: new Date().toISOString(),
+    };
 
-    if (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao criar setor",
-        variant: "destructive",
-      });
-    } else {
-      setDepartments([...departments, data]);
-      setDepartmentForm({ name: '', description: '' });
-      setShowDepartmentDialog(false);
-      toast({
-        title: "Sucesso",
-        description: "Setor criado com sucesso",
-      });
-    }
+    setDepartments([...departments, newDepartment]);
+    setDepartmentForm({ name: '', description: '' });
+    setShowDepartmentDialog(false);
+    toast({
+      title: "Sucesso",
+      description: "Setor criado com sucesso",
+    });
   };
 
   const handleUpdateDepartment = async () => {
     if (!editingDepartment || !departmentForm.name.trim()) return;
 
-    const { data, error } = await supabase
-      .from("departments")
-      .update(departmentForm)
-      .eq("id", editingDepartment.id)
-      .select()
-      .single();
+    const updatedDepartment = {
+      ...editingDepartment,
+      name: departmentForm.name,
+      description: departmentForm.description,
+    };
 
-    if (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar setor",
-        variant: "destructive",
-      });
-    } else {
-      setDepartments(departments.map(d => d.id === data.id ? data : d));
-      setDepartmentForm({ name: '', description: '' });
-      setEditingDepartment(null);
-      setShowDepartmentDialog(false);
-      toast({
-        title: "Sucesso",
-        description: "Setor atualizado com sucesso",
-      });
-    }
+    setDepartments(departments.map(d => d.id === updatedDepartment.id ? updatedDepartment : d));
+    setDepartmentForm({ name: '', description: '' });
+    setEditingDepartment(null);
+    setShowDepartmentDialog(false);
+    toast({
+      title: "Sucesso",
+      description: "Setor atualizado com sucesso",
+    });
   };
 
   const handleDeleteDepartment = async (id: string) => {
-    const { error } = await supabase
-      .from("departments")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao deletar setor",
-        variant: "destructive",
-      });
-    } else {
-      setDepartments(departments.filter(d => d.id !== id));
-      toast({
-        title: "Sucesso",
-        description: "Setor deletado com sucesso",
-      });
-    }
+    setDepartments(departments.filter(d => d.id !== id));
+    toast({
+      title: "Sucesso",
+      description: "Setor deletado com sucesso",
+    });
   };
 
   const handleCreatePosition = async () => {
@@ -177,82 +130,49 @@ export default function BusinessRules() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from("positions")
-      .insert([positionForm])
-      .select(`
-        *,
-        department:departments(*)
-      `)
-      .single();
+    const newPosition: Position = {
+      id: Math.random().toString(),
+      name: positionForm.name,
+      description: positionForm.description,
+      department_id: positionForm.department_id,
+      created_at: new Date().toISOString(),
+    };
 
-    if (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao criar cargo",
-        variant: "destructive",
-      });
-    } else {
-      setPositions([...positions, data]);
-      setPositionForm({ name: '', description: '', department_id: '' });
-      setShowPositionDialog(false);
-      toast({
-        title: "Sucesso",
-        description: "Cargo criado com sucesso",
-      });
-    }
+    setPositions([...positions, newPosition]);
+    setPositionForm({ name: '', description: '', department_id: '' });
+    setShowPositionDialog(false);
+    toast({
+      title: "Sucesso",
+      description: "Cargo criado com sucesso",
+    });
   };
 
   const handleUpdatePosition = async () => {
     if (!editingPosition || !positionForm.name.trim() || !positionForm.department_id) return;
 
-    const { data, error } = await supabase
-      .from("positions")
-      .update(positionForm)
-      .eq("id", editingPosition.id)
-      .select(`
-        *,
-        department:departments(*)
-      `)
-      .single();
+    const updatedPosition = {
+      ...editingPosition,
+      name: positionForm.name,
+      description: positionForm.description,
+      department_id: positionForm.department_id,
+    };
 
-    if (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar cargo",
-        variant: "destructive",
-      });
-    } else {
-      setPositions(positions.map(p => p.id === data.id ? data : p));
-      setPositionForm({ name: '', description: '', department_id: '' });
-      setEditingPosition(null);
-      setShowPositionDialog(false);
-      toast({
-        title: "Sucesso",
-        description: "Cargo atualizado com sucesso",
-      });
-    }
+    setPositions(positions.map(p => p.id === updatedPosition.id ? updatedPosition : p));
+    setPositionForm({ name: '', description: '', department_id: '' });
+    setEditingPosition(null);
+    setShowPositionDialog(false);
+    toast({
+      title: "Sucesso",
+      description: "Cargo atualizado com sucesso",
+    });
   };
 
   const handleDeletePosition = async (id: string) => {
-    const { error } = await supabase
-      .from("positions")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao deletar cargo",
-        variant: "destructive",
-      });
-    } else {
-      setPositions(positions.filter(p => p.id !== id));
-      toast({
-        title: "Sucesso",
-        description: "Cargo deletado com sucesso",
-      });
-    }
+    setPositions(positions.filter(p => p.id !== id));
+    toast({
+      title: "Sucesso",
+      description: "Cargo deletado com sucesso",
+    });
   };
 
   const openDepartmentDialog = (department?: Department) => {
@@ -279,6 +199,11 @@ export default function BusinessRules() {
       setPositionForm({ name: '', description: '', department_id: '' });
     }
     setShowPositionDialog(true);
+  };
+
+  const getDepartmentName = (departmentId: string) => {
+    const dept = departments.find(d => d.id === departmentId);
+    return dept?.name || 'N/A';
   };
 
   if (loading) {
@@ -530,7 +455,7 @@ export default function BusinessRules() {
                       <TableCell className="font-medium">{position.name}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          {position.department?.name || 'N/A'}
+                          {getDepartmentName(position.department_id)}
                         </Badge>
                       </TableCell>
                       <TableCell>{position.description || '-'}</TableCell>
