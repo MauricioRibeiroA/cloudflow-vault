@@ -60,10 +60,10 @@ const Logs = () => {
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
-        setProfile(data || { group_name: 'user' }); // fallback for users without profile
+        setProfile(data || { group_name: 'admin' }); // fallback for users without profile
       } catch (error) {
         console.error("Erro ao carregar perfil:", error);
-        setProfile({ group_name: 'user' }); // fallback
+        setProfile({ group_name: 'admin' }); // fallback
         setLoading(false);
       }
     }
