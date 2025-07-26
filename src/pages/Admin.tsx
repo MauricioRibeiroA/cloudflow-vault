@@ -241,16 +241,14 @@ const Admin = () => {
 
   const getGroupBadge = (group: string) => {
     const variants = {
-      admin: "destructive",
-      rh: "default",
-      ti: "secondary",
+      super_admin: "destructive",
+      company_admin: "default",
       user: "outline",
     } as const;
 
     const labels = {
-      admin: "Admin",
-      rh: "RH",
-      ti: "TI",
+      super_admin: "Gestor do Sistema",
+      company_admin: "Admin da Empresa",
       user: "Usuário",
     };
 
@@ -279,7 +277,7 @@ const Admin = () => {
   };
 
   // Verificar permissões após carregar dados
-  if (!loading && profile && !["admin", "rh"].includes(profile.group_name)) {
+  if (!loading && profile && !["company_admin", "super_admin"].includes(profile.group_name)) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -374,10 +372,9 @@ const Admin = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">Usuário</SelectItem>
-                      <SelectItem value="rh">Recursos Humanos</SelectItem>
-                      <SelectItem value="ti">TI</SelectItem>
-                      {profile?.group_name === "admin" && (
-                        <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="company_admin">Admin da Empresa</SelectItem>
+                      {profile?.group_name === "super_admin" && (
+                        <SelectItem value="super_admin">Gestor do Sistema</SelectItem>
                       )}
                     </SelectContent>
                   </Select>

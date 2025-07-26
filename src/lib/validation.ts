@@ -24,8 +24,8 @@ export const fullNameSchema = z
 
 // Group name validation schema
 export const groupNameSchema = z
-  .enum(["admin", "rh", "user"])
-  .refine((val) => ["admin", "rh", "user"].includes(val), {
+  .enum(["super_admin", "company_admin", "user"])
+  .refine((val) => ["super_admin", "company_admin", "user"].includes(val), {
     message: "Please select a valid group"
   });
 
