@@ -13,14 +13,12 @@ import { Navigate } from "react-router-dom";
 
 interface LogEntry {
   id: string;
-  user_id: string | null;
+  user_id: string;
   action: string;
-  target_table: string | null;
+  target_type: string;
+  target_name: string | null;
   target_id: string | null;
-  old_values: any;
-  new_values: any;
-  ip_address: any;
-  user_agent: string | null;
+  details: any;
   created_at: string;
   profiles?: {
     full_name: string;
@@ -48,7 +46,7 @@ const Logs = () => {
   }, [profile, actionFilter, dateFilter]);
 
   // Verificar permissões após carregar o perfil
-  if (profile && !["admin", "rh"].includes(profile.group_name)) {
+  if (profile && !["super_admin", "company_admin"].includes(profile.group_name)) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -60,10 +58,9 @@ const Logs = () => {
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
-        setProfile(data || { group_name: 'admin' }); // fallback for users without profile
+        setProfile(data);
       } catch (error) {
         console.error("Erro ao carregar perfil:", error);
-        setProfile({ group_name: 'admin' }); // fallback
         setLoading(false);
       }
     }
@@ -72,7 +69,7 @@ const Logs = () => {
   const fetchLogs = async () => {
     try {
       let query = supabase
-        .from("security_audit")
+        .from("logs")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(500);
@@ -129,7 +126,8 @@ const Logs = () => {
     searchTerm === "" ||
     log.profiles?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.profiles?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.target_table?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.target_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.target_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.action.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -187,15 +185,15 @@ const Logs = () => {
 
   const exportLogs = () => {
     const csvContent = [
-      ["Data/Hora", "Usuário", "Email", "Ação", "Tabela", "Alvo", "Valores Novos"].join(","),
+      ["Data/Hora", "Usuário", "Email", "Ação", "Tipo", "Nome", "Detalhes"].join(","),
       ...filteredLogs.map(log => [
         new Date(log.created_at).toLocaleString("pt-BR"),
         log.profiles?.full_name || "Sistema",
         log.profiles?.email || "",
         log.action,
-        log.target_table || "",
-        log.target_id || "",
-        JSON.stringify(log.new_values || {})
+        log.target_type || "",
+        log.target_name || "",
+        JSON.stringify(log.details || {})
       ].map(field => `"${field}"`).join(","))
     ].join("\n");
 
@@ -334,16 +332,16 @@ const Logs = () => {
                     </div>
                   </TableCell>
                   <TableCell>{getActionBadge(log.action)}</TableCell>
-                  <TableCell>{getTargetTypeBadge(log.target_table || "system")}</TableCell>
+                  <TableCell>{getTargetTypeBadge(log.target_type || "system")}</TableCell>
                   <TableCell>
                     <div className="max-w-[200px] truncate">
-                      {log.target_id || "N/A"}
+                      {log.target_name || log.target_id || "N/A"}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {log.new_values && Object.keys(log.new_values).length > 0 && (
+                    {log.details && Object.keys(log.details).length > 0 && (
                       <div className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {JSON.stringify(log.new_values)}
+                        {JSON.stringify(log.details)}
                       </div>
                     )}
                   </TableCell>
