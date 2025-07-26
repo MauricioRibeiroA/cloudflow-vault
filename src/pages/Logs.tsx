@@ -13,12 +13,14 @@ import { Navigate } from "react-router-dom";
 
 interface LogEntry {
   id: string;
-  user_id: string;
+  user_id: string | null;
   action: string;
-  target_type: string;
-  target_id: string;
-  target_name: string;
-  details: any;
+  target_table: string | null;
+  target_id: string | null;
+  old_values: any;
+  new_values: any;
+  ip_address: any;
+  user_agent: string | null;
   created_at: string;
   profiles?: {
     full_name: string;
@@ -52,19 +54,25 @@ const Logs = () => {
 
   const fetchCurrentProfile = async () => {
     if (user) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      setProfile(data);
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        setProfile(data || { group_name: 'user' }); // fallback for users without profile
+      } catch (error) {
+        console.error("Erro ao carregar perfil:", error);
+        setProfile({ group_name: 'user' }); // fallback
+        setLoading(false);
+      }
     }
   };
 
   const fetchLogs = async () => {
     try {
       let query = supabase
-        .from("logs")
+        .from("security_audit")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(500);
@@ -121,7 +129,7 @@ const Logs = () => {
     searchTerm === "" ||
     log.profiles?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.profiles?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.target_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.target_table?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.action.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -179,15 +187,15 @@ const Logs = () => {
 
   const exportLogs = () => {
     const csvContent = [
-      ["Data/Hora", "Usuário", "Email", "Ação", "Tipo", "Alvo", "Detalhes"].join(","),
+      ["Data/Hora", "Usuário", "Email", "Ação", "Tabela", "Alvo", "Valores Novos"].join(","),
       ...filteredLogs.map(log => [
         new Date(log.created_at).toLocaleString("pt-BR"),
         log.profiles?.full_name || "Sistema",
         log.profiles?.email || "",
         log.action,
-        log.target_type,
-        log.target_name || "",
-        JSON.stringify(log.details || {})
+        log.target_table || "",
+        log.target_id || "",
+        JSON.stringify(log.new_values || {})
       ].map(field => `"${field}"`).join(","))
     ].join("\n");
 
@@ -326,16 +334,16 @@ const Logs = () => {
                     </div>
                   </TableCell>
                   <TableCell>{getActionBadge(log.action)}</TableCell>
-                  <TableCell>{getTargetTypeBadge(log.target_type)}</TableCell>
+                  <TableCell>{getTargetTypeBadge(log.target_table || "system")}</TableCell>
                   <TableCell>
                     <div className="max-w-[200px] truncate">
-                      {log.target_name || log.target_id}
+                      {log.target_id || "N/A"}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {log.details && Object.keys(log.details).length > 0 && (
+                    {log.new_values && Object.keys(log.new_values).length > 0 && (
                       <div className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {JSON.stringify(log.details)}
+                        {JSON.stringify(log.new_values)}
                       </div>
                     )}
                   </TableCell>
