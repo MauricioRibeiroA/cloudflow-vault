@@ -117,34 +117,17 @@ const Admin = () => {
 
   const handleCreateUser = async () => {
     try {
-      // Criar usuário no auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.full_name,
-            group_name: formData.group_name,
-          },
-        },
+      // Usar função admin_create_user que cria diretamente na tabela profiles
+      const { data: userId, error } = await supabase.rpc("admin_create_user", {
+        p_email: formData.email,
+        p_full_name: formData.full_name,
+        p_group_name: formData.group_name,
+        p_company_id: null, // Será determinado automaticamente pela função
+        p_department_id: formData.department_id || null,
+        p_position_id: formData.position_id || null,
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Atualizar perfil diretamente usando função admin
-        const { error: updateError } = await supabase.rpc("admin_update_profile", {
-          p_user_id: authData.user.id,
-          p_full_name: formData.full_name,
-          p_email: formData.email,
-          p_group_name: formData.group_name,
-          p_status: formData.status,
-          p_department_id: formData.department_id || null,
-          p_position_id: formData.position_id || null,
-        });
-
-        if (updateError) throw updateError;
-      }
+      if (error) throw error;
 
       toast.success("Usuário criado com sucesso");
       setDialogOpen(false);
@@ -365,7 +348,7 @@ const Admin = () => {
                       {(profile?.group_name === "company_admin" || profile?.group_name === "super_admin") && (
                         <SelectItem value="hr">RH</SelectItem>
                       )}
-                      {profile?.group_name === "company_admin" && (
+                      {(profile?.group_name === "company_admin" || profile?.group_name === "super_admin") && (
                         <SelectItem value="company_admin">Admin da Empresa</SelectItem>
                       )}
                       {profile?.group_name === "super_admin" && (
