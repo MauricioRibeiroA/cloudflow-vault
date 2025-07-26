@@ -19,53 +19,17 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [needsBootstrap, setNeedsBootstrap] = useState(false);
-  const [checkingBootstrap, setCheckingBootstrap] = useState(true);
-  const [fullName, setFullName] = useState("");
 
-  // Check if system needs bootstrap
-  useEffect(() => {
-    const checkForUsers = async () => {
-      try {
-        const { count, error } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-
-        if (error) {
-          console.error('Error checking for users:', error);
-          setNeedsBootstrap(false);
-        } else {
-          setNeedsBootstrap(count === 0);
-        }
-      } catch (error) {
-        console.error('Error checking for users:', error);
-        setNeedsBootstrap(false);
-      } finally {
-        setCheckingBootstrap(false);
-      }
-    };
-
-    checkForUsers();
-  }, []);
+  // Bootstrap functionality removed for security - no longer allowing public super admin creation
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && !checkingBootstrap) {
+    if (user) {
       console.log('User authenticated, redirecting to dashboard');
       navigate("/dashboard");
     }
-  }, [user, checkingBootstrap, navigate]);
+  }, [user, navigate]);
 
-  if (checkingBootstrap) {
-    return (
-      <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Verificando sistema...</p>
-        </div>
-      </div>
-    );
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,39 +37,35 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (needsBootstrap) {
-        await handleCreateSuperAdmin();
-      } else {
-        // Validate form data
-        const formData = { email, password };
-        const validationResult = loginSchema.safeParse(formData);
-        
-        if (!validationResult.success) {
-          const errors: Record<string, string> = {};
-          validationResult.error.issues.forEach((error) => {
-            if (error.path.length > 0) {
-              errors[error.path[0] as string] = error.message;
-            }
-          });
-          setValidationErrors(errors);
-          setLoading(false);
-          return;
-        }
+      // Validate form data
+      const formData = { email, password };
+      const validationResult = loginSchema.safeParse(formData);
+      
+      if (!validationResult.success) {
+        const errors: Record<string, string> = {};
+        validationResult.error.issues.forEach((error) => {
+          if (error.path.length > 0) {
+            errors[error.path[0] as string] = error.message;
+          }
+        });
+        setValidationErrors(errors);
+        setLoading(false);
+        return;
+      }
 
-        const { error } = await signIn(email, password);
-        if (error) {
-          toast({
-            title: "Erro no login",
-            description: "Email ou senha incorretos. Tente novamente.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Login realizado com sucesso!",
-            description: "Bem-vindo ao CloudFlow Vault.",
-          });
-          navigate("/dashboard");
-        }
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({
+          title: "Erro no login",
+          description: "Email ou senha incorretos. Tente novamente.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo ao CloudFlow Vault.",
+        });
+        navigate("/dashboard");
       }
     } catch (error) {
       toast({
@@ -118,66 +78,6 @@ const Auth = () => {
     }
   };
 
-  const handleCreateSuperAdmin = async () => {
-    try {
-      // First, check if there are any companies
-      const { data: companies, error: companiesError } = await supabase
-        .from('companies')
-        .select('id')
-        .limit(1);
-
-      if (companiesError) {
-        throw new Error('Failed to check companies');
-      }
-
-      let companyId;
-      if (!companies || companies.length === 0) {
-        // Create default company
-        const { data: newCompany, error: createCompanyError } = await supabase
-          .from('companies')
-          .insert([{
-            name: 'Sistema Principal',
-            status: 'active'
-          }])
-          .select()
-          .single();
-
-        if (createCompanyError) {
-          throw new Error('Failed to create default company');
-        }
-        companyId = newCompany.id;
-      } else {
-        companyId = companies[0].id;
-      }
-
-      // Create the super admin user using the admin function
-      const { error: createError } = await supabase.rpc('admin_create_user', {
-        p_email: email,
-        p_full_name: fullName,
-        p_group_name: 'super_admin',
-        p_company_id: companyId
-      });
-
-      if (createError) {
-        throw new Error(createError.message);
-      }
-
-      toast({
-        title: 'Super Admin criado com sucesso!',
-        description: 'Agora você pode fazer login com as credenciais criadas.',
-      });
-
-      setNeedsBootstrap(false);
-    } catch (error: any) {
-      console.error('Error creating super admin:', error);
-      toast({
-        title: 'Erro ao criar Super Admin',
-        description: error.message,
-        variant: 'destructive'
-      });
-      throw error;
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">
@@ -189,34 +89,16 @@ const Auth = () => {
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-foreground">
-                {needsBootstrap ? 'Configuração Inicial' : 'Bem-vindo de volta'}
+                Bem-vindo de volta
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-2">
-                {needsBootstrap 
-                  ? 'Nenhum usuário encontrado. Crie o primeiro Super Admin para começar.'
-                  : 'Faça login para acessar o CloudFlow Vault'
-                }
+                Faça login para acessar o CloudFlow Vault
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {needsBootstrap && (
-                <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-sm font-medium">
-                    Nome Completo
-                  </Label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Digite o nome completo"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
               
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
@@ -227,7 +109,7 @@ const Auth = () => {
                   <Input
                     id="email"
                     type="email"
-                    placeholder={needsBootstrap ? "Digite o email do administrador" : "Digite seu email"}
+                    placeholder="Digite seu email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className={`pl-10 ${validationErrors.email ? 'border-destructive' : ''}`}
@@ -251,12 +133,11 @@ const Auth = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder={needsBootstrap ? "Digite uma senha segura" : "Digite sua senha"}
+                    placeholder="Digite sua senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={`pl-10 pr-10 ${validationErrors.password ? 'border-destructive' : ''}`}
                     required
-                    minLength={needsBootstrap ? 6 : undefined}
                   />
                   {validationErrors.password && (
                     <div className="flex items-center gap-2 text-sm text-destructive mt-1">
@@ -283,20 +164,18 @@ const Auth = () => {
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    {needsBootstrap ? 'Criando...' : 'Entrando...'}
+                    Entrando...
                   </div>
                 ) : (
-                  needsBootstrap ? "Criar Super Admin" : "Entrar"
+                  "Entrar"
                 )}
               </Button>
 
-              {!needsBootstrap && (
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Não tem uma conta? Entre em contato com o administrador.
-                  </p>
-                </div>
-              )}
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  Não tem uma conta? Entre em contato com o administrador.
+                </p>
+              </div>
             </form>
           </CardContent>
         </Card>
