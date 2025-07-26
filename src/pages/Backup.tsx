@@ -213,7 +213,7 @@ const Backup = () => {
   };
 
   // Verificar permissões após carregar dados
-  if (!loading && profile && !["admin", "ti"].includes(profile.group_name)) {
+  if (!loading && profile && !["super_admin", "company_admin"].includes(profile.group_name)) {
     return <Navigate to="/dashboard" replace />;
   }
 
