@@ -35,8 +35,18 @@ const Logs = () => {
   const [actionFilter, setActionFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
 
-  // Verificar permissões
-  if (!profile || !["admin", "rh", "ti"].includes(profile.group_name)) {
+  useEffect(() => {
+    fetchCurrentProfile();
+  }, [user]);
+
+  useEffect(() => {
+    if (profile) {
+      fetchLogs();
+    }
+  }, [profile, actionFilter, dateFilter]);
+
+  // Verificar permissões após carregar o perfil
+  if (profile && !["admin", "rh", "ti"].includes(profile.group_name)) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -106,10 +116,6 @@ const Logs = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCurrentProfile();
-    fetchLogs();
-  }, [user, actionFilter, dateFilter]);
 
   const filteredLogs = logs.filter((log) =>
     searchTerm === "" ||
