@@ -21,20 +21,36 @@ export const ProtectedRoute = ({ children, requiredGroups }: ProtectedRouteProps
       }
 
       try {
+        // First check if user exists in profiles table
         const { data, error } = await supabase
           .from('profiles')
-          .select('group_name')
+          .select('group_name, status')
           .eq('user_id', user.id)
           .single();
 
-        if (error) {
-          console.error('Error fetching user group:', error);
+        if (error || !data) {
+          console.error('User not found in profiles or error fetching:', error);
+          // Force logout if user doesn't exist in profiles
+          await supabase.auth.signOut();
           setUserGroup(null);
-        } else {
-          setUserGroup(data?.group_name || null);
+          setGroupLoading(false);
+          return;
         }
+
+        // Check if user is active
+        if (data.status !== 'active') {
+          console.error('User account is not active');
+          await supabase.auth.signOut();
+          setUserGroup(null);
+          setGroupLoading(false);
+          return;
+        }
+
+        setUserGroup(data.group_name || null);
       } catch (error) {
-        console.error('Error fetching user group:', error);
+        console.error('Critical error fetching user group:', error);
+        // Force logout on any critical error
+        await supabase.auth.signOut();
         setUserGroup(null);
       } finally {
         setGroupLoading(false);

@@ -28,7 +28,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        if (session?.user) {
+          // Verify user exists in profiles table
+          try {
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('user_id, status')
+              .eq('user_id', session.user.id)
+              .single();
+
+            if (error || !profile || profile.status !== 'active') {
+              console.error('Invalid user session - user not found in profiles or inactive');
+              // Clear invalid session
+              await supabase.auth.signOut();
+              setSession(null);
+              setUser(null);
+              setLoading(false);
+              return;
+            }
+          } catch (error) {
+            console.error('Error validating user session:', error);
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -36,7 +64,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        // Verify user exists in profiles table
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('user_id, status')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (error || !profile || profile.status !== 'active') {
+            console.error('Invalid initial session - user not found in profiles or inactive');
+            // Clear invalid session
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error('Error validating initial session:', error);
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
