@@ -47,6 +47,7 @@ interface FileItem {
   file_size: number;
   file_type: string;
   file_path: string;
+  folder_id: string | null;
   created_at: string;
   uploaded_by: string;
 }
@@ -151,7 +152,12 @@ const Dashboard = () => {
           action: 'file_download',
           target_type: 'file',
           target_id: file.id,
-          target_name: file.name
+          target_name: file.name,
+          details: {
+            file_size: file.file_size,
+            file_type: file.file_type,
+            folder_id: file.folder_id
+          }
         });
 
       toast({
@@ -194,7 +200,12 @@ const Dashboard = () => {
           action: 'file_delete',
           target_type: 'file',
           target_id: file.id,
-          target_name: file.name
+          target_name: file.name,
+          details: {
+            file_size: file.file_size,
+            file_type: file.file_type,
+            folder_id: file.folder_id
+          }
         });
 
       toast({

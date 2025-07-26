@@ -23,7 +23,7 @@ interface LogEntry {
   profiles?: {
     full_name: string;
     email: string;
-  };
+  } | null;
 }
 
 const Logs = () => {
@@ -73,10 +73,32 @@ const Logs = () => {
           .lt("created_at", endDate.toISOString());
       }
 
-      const { data, error } = await query;
+      const { data: logsData, error } = await query;
 
       if (error) throw error;
-      setLogs(data || []);
+
+      // Get unique user IDs to fetch profiles
+      const userIds = [...new Set(logsData?.map(log => log.user_id).filter(Boolean))];
+      
+      let profilesMap = new Map();
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email")
+          .in("user_id", userIds);
+        
+        profilesData?.forEach(profile => {
+          profilesMap.set(profile.user_id, profile);
+        });
+      }
+
+      // Merge logs with profiles
+      const logsWithProfiles = logsData?.map(log => ({
+        ...log,
+        profiles: profilesMap.get(log.user_id) || null
+      })) || [];
+
+      setLogs(logsWithProfiles);
     } catch (error) {
       console.error("Erro ao carregar logs:", error);
     } finally {
@@ -99,12 +121,13 @@ const Logs = () => {
 
   const getActionBadge = (action: string) => {
     const variants = {
-      upload: "default",
-      download: "default",
+      file_upload: "default",
+      file_download: "default", 
+      file_delete: "destructive",
+      folder_create: "default",
+      folder_delete: "destructive",
       view: "secondary",
       edit: "outline",
-      delete: "destructive",
-      create: "default",
       login: "default",
       logout: "secondary",
       profile_update: "outline",
@@ -112,12 +135,13 @@ const Logs = () => {
     } as const;
 
     const labels = {
-      upload: "Upload",
-      download: "Download",
+      file_upload: "Upload",
+      file_download: "Download",
+      file_delete: "Exclusão de Arquivo",
+      folder_create: "Criação de Pasta",
+      folder_delete: "Exclusão de Pasta",
       view: "Visualização",
       edit: "Edição",
-      delete: "Exclusão",
-      create: "Criação",
       login: "Login",
       logout: "Logout",
       profile_update: "Atualização de Perfil",
@@ -229,12 +253,12 @@ const Logs = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as ações</SelectItem>
-                  <SelectItem value="upload">Upload</SelectItem>
-                  <SelectItem value="download">Download</SelectItem>
+                  <SelectItem value="file_upload">Upload</SelectItem>
+                  <SelectItem value="file_download">Download</SelectItem>
+                  <SelectItem value="file_delete">Exclusão de Arquivo</SelectItem>
+                  <SelectItem value="folder_create">Criação de Pasta</SelectItem>
+                  <SelectItem value="folder_delete">Exclusão de Pasta</SelectItem>
                   <SelectItem value="view">Visualização</SelectItem>
-                  <SelectItem value="edit">Edição</SelectItem>
-                  <SelectItem value="delete">Exclusão</SelectItem>
-                  <SelectItem value="create">Criação</SelectItem>
                   <SelectItem value="login">Login</SelectItem>
                   <SelectItem value="logout">Logout</SelectItem>
                 </SelectContent>
@@ -287,9 +311,11 @@ const Logs = () => {
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">Sistema</div>
+                      <div className="font-medium">
+                        {log.profiles?.full_name || "Sistema"}
+                      </div>
                       <div className="text-sm text-muted-foreground">
-                        ID: {log.user_id}
+                        {log.profiles?.email || `ID: ${log.user_id}`}
                       </div>
                     </div>
                   </TableCell>
