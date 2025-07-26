@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, UserPlus, Edit } from "lucide-react";
+import { Users, UserPlus, Edit, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
@@ -39,7 +39,7 @@ interface Position {
 }
 
 const Admin = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -269,6 +269,15 @@ const Admin = () => {
     );
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Logout realizado com sucesso");
+    } catch (error) {
+      toast.error("Erro ao fazer logout");
+    }
+  };
+
   // Verificar permissões após carregar dados
   if (!loading && profile && !["admin", "rh"].includes(profile.group_name)) {
     return <Navigate to="/dashboard" replace />;
@@ -291,13 +300,18 @@ const Admin = () => {
             Gerencie usuários, grupos e permissões do sistema
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Novo Usuário
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sair
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreateDialog}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Novo Usuário
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>
@@ -450,8 +464,9 @@ const Admin = () => {
                 </Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
