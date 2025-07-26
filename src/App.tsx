@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import BusinessRules from "./pages/BusinessRules";
 import Logs from "./pages/Logs";
 import Backup from "./pages/Backup";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,13 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Admin />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/business-rules" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <BusinessRules />
                 </AppLayout>
               </ProtectedRoute>
             } />

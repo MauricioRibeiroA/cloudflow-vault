@@ -41,9 +41,15 @@ const menuItems: MenuItem[] = [
     icon: Home,
   },
   {
-    title: "Administração",
+    title: "Colaboradores",
     url: "/admin",
     icon: Users,
+    requiredGroups: ["admin", "rh"],
+  },
+  {
+    title: "Regras de Negócio",
+    url: "/business-rules",
+    icon: Settings,
     requiredGroups: ["admin", "rh"],
   },
   {
