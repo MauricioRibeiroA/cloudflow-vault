@@ -37,8 +37,14 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .single();
 
-    if (!profile || profile.status !== 'active' || !profile.company_id) {
+    if (!profile || profile.status !== 'active') {
       throw new Error('Invalid user profile');
+    }
+
+    // Super admins can operate without company_id
+    const isSuperAdmin = profile.group_name === 'super_admin';
+    if (!isSuperAdmin && !profile.company_id) {
+      throw new Error('Invalid user profile - no company association');
     }
 
     const { action, ...payload } = await req.json();
@@ -77,7 +83,7 @@ serve(async (req) => {
             file_type: fileType,
             folder_id: folderId,
             uploaded_by: user.id,
-            company_id: profile.company_id,
+            company_id: profile.company_id || null,
           });
 
         if (insertError) throw insertError;
@@ -90,7 +96,7 @@ serve(async (req) => {
             action: 'file_upload_b2',
             target_type: 'file',
             target_name: fileName,
-            company_id: profile.company_id,
+            company_id: profile.company_id || null,
             details: {
               file_size: fileSize,
               file_type: fileType,
@@ -108,10 +114,15 @@ serve(async (req) => {
         // Get file info and verify access
         const { data: fileToDelete } = await supabaseClient
           .from('files')
-          .select('file_path, name, company_id')
+          .select('file_path, name, company_id, uploaded_by')
           .eq('id', fileId)
-          .eq('company_id', profile.company_id)
           .single();
+
+        // Verify access: same company or super admin can delete their own files
+        if (fileToDelete?.company_id !== profile.company_id && 
+            !(isSuperAdmin && fileToDelete?.uploaded_by === user.id)) {
+          throw new Error('File not found or access denied');
+        }
 
         if (!fileToDelete) {
           throw new Error('File not found or access denied');
@@ -129,8 +140,7 @@ serve(async (req) => {
         const { error: deleteError } = await supabaseClient
           .from('files')
           .delete()
-          .eq('id', fileId)
-          .eq('company_id', profile.company_id);
+          .eq('id', fileId);
 
         if (deleteError) throw deleteError;
 
@@ -142,7 +152,7 @@ serve(async (req) => {
             action: 'file_delete_b2',
             target_type: 'file',
             target_name: fileToDelete.name,
-            company_id: profile.company_id,
+            company_id: profile.company_id || null,
             details: {
               storage_backend: 'backblaze_b2',
               file_path: fileToDelete.file_path
@@ -154,22 +164,39 @@ serve(async (req) => {
         });
 
       case 'list_usage':
-        // Get storage usage for company
-        const { data: files } = await supabaseClient
-          .from('files')
-          .select('file_size')
-          .eq('company_id', profile.company_id);
+        // Get storage usage
+        let files, storageLimit;
+        
+        if (profile.company_id) {
+          // Company usage
+          const { data: companyFiles } = await supabaseClient
+            .from('files')
+            .select('file_size')
+            .eq('company_id', profile.company_id);
+          
+          files = companyFiles;
+
+          const { data: company } = await supabaseClient
+            .from('companies')
+            .select('settings')
+            .eq('id', profile.company_id)
+            .single();
+
+          storageLimit = company?.settings?.storage_limit_gb || 10;
+        } else {
+          // Super admin personal usage
+          const { data: personalFiles } = await supabaseClient
+            .from('files')
+            .select('file_size')
+            .eq('uploaded_by', user.id)
+            .is('company_id', null);
+          
+          files = personalFiles;
+          storageLimit = 50; // 50GB for super admin personal files
+        }
 
         const totalUsage = files?.reduce((sum, file) => sum + file.file_size, 0) || 0;
         const usageGB = totalUsage / (1024 * 1024 * 1024);
-
-        const { data: company } = await supabaseClient
-          .from('companies')
-          .select('settings')
-          .eq('id', profile.company_id)
-          .single();
-
-        const storageLimit = company?.settings?.storage_limit_gb || 10;
 
         return new Response(JSON.stringify({
           totalUsageBytes: totalUsage,

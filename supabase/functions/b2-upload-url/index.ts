@@ -33,12 +33,18 @@ serve(async (req) => {
     // Get user profile and company
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('company_id, status')
+      .select('company_id, status, group_name')
       .eq('user_id', user.id)
       .single();
 
-    if (!profile || profile.status !== 'active' || !profile.company_id) {
+    if (!profile || profile.status !== 'active') {
       throw new Error('Invalid user profile');
+    }
+
+    // Super admins can upload without company_id
+    const isSuperAdmin = profile.group_name === 'super_admin';
+    if (!isSuperAdmin && !profile.company_id) {
+      throw new Error('Invalid user profile - no company association');
     }
 
     const { fileName, fileSize, fileType, folderId } = await req.json();
@@ -47,31 +53,52 @@ serve(async (req) => {
       throw new Error('Missing required fields');
     }
 
-    // Check storage limits (implement based on company settings)
-    const { data: company } = await supabaseClient
-      .from('companies')
-      .select('settings')
-      .eq('id', profile.company_id)
-      .single();
-
-    const storageLimit = company?.settings?.storage_limit_gb || 10; // Default 10GB
+    // Get storage settings and check limits
+    let storageLimit = 50; // Default 50GB for super admins
+    const fileSizeGB = fileSize / (1024 * 1024 * 1024);
     
-    // Calculate current usage
-    const { data: files } = await supabaseClient
-      .from('files')
-      .select('file_size')
-      .eq('company_id', profile.company_id);
+    if (profile.company_id) {
+      // For users with company
+      const { data: company } = await supabaseClient
+        .from('companies')
+        .select('settings')
+        .eq('id', profile.company_id)
+        .single();
 
-    const currentUsage = files?.reduce((sum, file) => sum + file.file_size, 0) || 0;
-    const currentUsageGB = currentUsage / (1024 * 1024 * 1024);
+      storageLimit = company?.settings?.storage_limit_gb || 10;
 
-    if (currentUsageGB + (fileSize / (1024 * 1024 * 1024)) > storageLimit) {
-      throw new Error('Storage limit exceeded');
+      // Check current usage for company
+      const { data: files } = await supabaseClient
+        .from('files')
+        .select('file_size')
+        .eq('company_id', profile.company_id);
+
+      const currentUsage = files?.reduce((sum, file) => sum + file.file_size, 0) || 0;
+      const currentUsageGB = currentUsage / (1024 * 1024 * 1024);
+
+      if (currentUsageGB + fileSizeGB > storageLimit) {
+        throw new Error(`Storage limit exceeded. Current: ${currentUsageGB.toFixed(2)}GB, Limit: ${storageLimit}GB`);
+      }
+    } else if (isSuperAdmin) {
+      // Check current usage for super admin (personal files)
+      const { data: files } = await supabaseClient
+        .from('files')
+        .select('file_size')
+        .eq('uploaded_by', user.id)
+        .is('company_id', null);
+
+      const currentUsage = files?.reduce((sum, file) => sum + file.file_size, 0) || 0;
+      const currentUsageGB = currentUsage / (1024 * 1024 * 1024);
+
+      if (currentUsageGB + fileSizeGB > storageLimit) {
+        throw new Error(`Storage limit exceeded. Current: ${currentUsageGB.toFixed(2)}GB, Limit: ${storageLimit}GB`);
+      }
     }
 
     // Generate signed URL for B2
     const timestamp = Date.now();
-    const filePath = `${profile.company_id}/${folderId || 'root'}/${timestamp}-${fileName}`;
+    const basePath = profile.company_id || `user_${user.id}`;
+    const filePath = `${basePath}/${folderId || 'root'}/${timestamp}-${fileName}`;
 
     const b2Config = {
       accessKeyId: Deno.env.get('B2_ACCESS_KEY_ID'),
