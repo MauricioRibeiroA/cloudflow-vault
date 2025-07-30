@@ -9,8 +9,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileUp, FolderPlus, Upload, FileText, Folder, Download, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileUp, FolderPlus, Upload, FileText, Folder, Download, Trash2, Cloud, HardDrive, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { FileUpload } from "@/components/ui/file-upload";
+import { B2FileUpload } from "@/components/ui/b2-file-upload";
 
 interface File {
   id: string;
@@ -31,6 +34,13 @@ interface Folder {
   created_at: string;
 }
 
+interface StorageUsage {
+  totalUsageBytes: number;
+  totalUsageGB: number;
+  storageLimitGB: number;
+  usagePercentage: number;
+}
+
 const UploadFiles = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,6 +51,7 @@ const UploadFiles = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
 
   const fetchFolders = async () => {
     try {
@@ -71,9 +82,23 @@ const UploadFiles = () => {
     }
   };
 
+  const fetchStorageUsage = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('b2-file-manager', {
+        body: { action: 'list_usage' }
+      });
+
+      if (error) throw error;
+      setStorageUsage(data);
+    } catch (error) {
+      console.error("Erro ao carregar uso de storage:", error);
+    }
+  };
+
   React.useEffect(() => {
     fetchFolders();
     fetchFiles();
+    fetchStorageUsage();
   }, [currentFolder]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,6 +179,57 @@ const UploadFiles = () => {
       toast({
         title: "Erro",
         description: error.message || "Erro ao criar pasta",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadFromB2 = async (file: File) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('b2-download-url', {
+        body: { fileId: file.id }
+      });
+
+      if (error) throw error;
+
+      // Open the signed URL in a new tab for download
+      window.open(data.signedUrl, '_blank');
+
+      toast({
+        title: "Download iniciado",
+        description: `Download de ${data.fileName} foi iniciado.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro no download",
+        description: error.message || "Erro ao baixar arquivo",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteFromB2 = async (file: File) => {
+    try {
+      const { error } = await supabase.functions.invoke('b2-file-manager', {
+        body: { 
+          action: 'delete',
+          fileId: file.id 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Arquivo excluído do Backblaze B2 com sucesso!",
+      });
+
+      fetchFiles();
+      fetchStorageUsage();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao excluir arquivo",
         variant: "destructive",
       });
     }
@@ -244,9 +320,9 @@ const UploadFiles = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Upload de Arquivos</h1>
+          <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Arquivos</h1>
           <p className="text-muted-foreground">
-            Gerencie e organize seus arquivos no sistema
+            Gerencie arquivos no Supabase Storage e Backblaze B2
           </p>
         </div>
         <div className="flex gap-2">
@@ -286,20 +362,56 @@ const UploadFiles = () => {
             </DialogContent>
           </Dialog>
           
-          <Button asChild className="cursor-pointer">
-            <label>
-              <FileUp className="mr-2 h-4 w-4" />
-              Enviar Arquivo
-              <input
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                disabled={isUploading}
-              />
-            </label>
-          </Button>
+          <FileUpload 
+            currentFolder={currentFolder} 
+            onUploadComplete={() => {
+              fetchFiles();
+              fetchStorageUsage();
+            }} 
+          />
+          
+          <B2FileUpload 
+            currentFolder={currentFolder} 
+            onUploadComplete={() => {
+              fetchFiles();
+              fetchStorageUsage();
+            }} 
+          />
         </div>
       </div>
+
+      {/* Storage Usage */}
+      {storageUsage && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Uso de Armazenamento
+            </CardTitle>
+            <CardDescription>
+              Monitoramento do espaço utilizado em sua conta
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">
+                  {storageUsage.totalUsageGB.toFixed(2)} GB de {storageUsage.storageLimitGB} GB utilizados
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {storageUsage.usagePercentage.toFixed(1)}%
+                </span>
+              </div>
+              <Progress value={storageUsage.usagePercentage} className="h-2" />
+              {storageUsage.usagePercentage > 90 && (
+                <div className="text-sm text-amber-600">
+                  ⚠️ Você está próximo do limite de armazenamento
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Breadcrumb */}
       <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -352,6 +464,7 @@ const UploadFiles = () => {
                 <TableHead>Nome</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Tamanho</TableHead>
+                <TableHead>Storage</TableHead>
                 <TableHead>Data de Criação</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -372,6 +485,7 @@ const UploadFiles = () => {
                     <Badge variant="outline">Pasta</Badge>
                   </TableCell>
                   <TableCell>-</TableCell>
+                  <TableCell>-</TableCell>
                   <TableCell>
                     {new Date(folder.created_at).toLocaleDateString("pt-BR")}
                   </TableCell>
@@ -391,43 +505,62 @@ const UploadFiles = () => {
               ))}
 
               {/* Files */}
-              {files.map((file) => (
-                <TableRow key={file.id}>
-                  <TableCell className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-500" />
-                    <span>{file.name}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{file.file_type || "Arquivo"}</Badge>
-                  </TableCell>
-                  <TableCell>{formatFileSize(file.file_size)}</TableCell>
-                  <TableCell>
-                    {new Date(file.created_at).toLocaleDateString("pt-BR")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDownload(file)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteFile(file)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {files.map((file) => {
+                const isB2File = file.file_path.includes('/');
+                
+                return (
+                  <TableRow key={file.id}>
+                    <TableCell className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span>{file.name}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{file.file_type || "Arquivo"}</Badge>
+                    </TableCell>
+                    <TableCell>{formatFileSize(file.file_size)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {isB2File ? (
+                          <>
+                            <Cloud className="h-3 w-3 text-blue-500" />
+                            <span className="text-xs">B2</span>
+                          </>
+                        ) : (
+                          <>
+                            <HardDrive className="h-3 w-3 text-green-500" />
+                            <span className="text-xs">Supabase</span>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(file.created_at).toLocaleDateString("pt-BR")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => isB2File ? handleDownloadFromB2(file) : handleDownload(file)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => isB2File ? handleDeleteFromB2(file) : handleDeleteFile(file)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
 
               {getVisibleFolders().length === 0 && files.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Nesta pasta não há arquivos nem pastas
                   </TableCell>
                 </TableRow>
