@@ -68,19 +68,27 @@ const UploadFiles = () => {
   };
 
   const fetchFiles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("files")
-        .select("*")
-        .eq("folder_id", currentFolder || "")
-        .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      setFiles(data || []);
-    } catch (error) {
-      console.error("Erro ao carregar arquivos:", error);
+  try {
+    let query = supabase
+      .from("files")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (currentFolder) {
+      query = query.eq("folder_id", currentFolder);
+    } else {
+      query = query.is("folder_id", null);
     }
-  };
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    setFiles(data || []);
+  } catch (error) {
+    console.error("Erro ao carregar arquivos:", error);
+  }
+};
+
 
   const fetchStorageUsage = async () => {
     try {
