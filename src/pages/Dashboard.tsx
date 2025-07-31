@@ -211,7 +211,7 @@ const Dashboard = () => {
                 {profile.group_name.toUpperCase()}
               </Badge>
             </div>
-            {profile.group_name === 'super_admin' && process.env.NODE_ENV === 'development' && (
+            {profile.group_name === 'super_admin' && (
               <div className="space-y-1">
                 <Button
                   variant="ghost"
