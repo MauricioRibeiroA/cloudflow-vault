@@ -29,7 +29,7 @@ serve(async (req) => {
     const { data: profile } = await supabase
       .from('profiles')
       .select('company_id, status, group_name')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .single();
 
     if (!profile || profile.status !== 'active') throw new Error('Invalid profile');
