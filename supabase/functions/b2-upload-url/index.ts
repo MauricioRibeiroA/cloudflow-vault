@@ -109,8 +109,9 @@ serve(async (req) => {
     };
 
     // Create AWS SDK-compatible signed URL
-    const { S3Client, PutObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.445.0");
-    const { getSignedUrl } = await import("https://esm.sh/@aws-sdk/s3-request-presigner@3.445.0");
+    const { S3Client, PutObjectCommand } = await import("https://cdn.jsdelivr.net/npm/@aws-sdk/client-s3@3.445.0/+esm");
+    const { getSignedUrl } = await import("https://cdn.jsdelivr.net/npm/@aws-sdk/s3-request-presigner@3.445.0/+esm");
+
 
     const s3Client = new S3Client({
       region: b2Config.region,
