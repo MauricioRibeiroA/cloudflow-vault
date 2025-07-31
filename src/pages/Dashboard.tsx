@@ -16,7 +16,8 @@ import {
   Activity,
   DollarSign,
   Server,
-  Zap
+  Zap,
+  Eye
 } from 'lucide-react';
 
 interface StorageStats {
@@ -72,6 +73,15 @@ const Dashboard = () => {
       setProfile(data);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
+    }
+  };
+
+  const handleViewJWTToken = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      console.log("Token JWT do super admin:", data.session?.access_token);
+    } catch (error) {
+      console.error('Error fetching JWT token:', error);
     }
   };
 
@@ -194,11 +204,27 @@ const Dashboard = () => {
           </p>
         </div>
         {profile && (
-          <div className="text-right">
-            <p className="text-sm font-medium text-foreground">{profile.full_name}</p>
-            <Badge variant="secondary" className="text-xs">
-              {profile.group_name.toUpperCase()}
-            </Badge>
+          <div className="text-right space-y-2">
+            <div>
+              <p className="text-sm font-medium text-foreground">{profile.full_name}</p>
+              <Badge variant="secondary" className="text-xs">
+                {profile.group_name.toUpperCase()}
+              </Badge>
+            </div>
+            {profile.group_name === 'super_admin' && process.env.NODE_ENV === 'development' && (
+              <div className="space-y-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleViewJWTToken}
+                  className="text-xs h-6 px-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Eye className="mr-1 h-3 w-3" />
+                  Ver Token JWT
+                </Button>
+                <p className="text-xs text-yellow-600">⚠️ Apenas para uso interno em desenvolvimento</p>
+              </div>
+            )}
           </div>
         )}
       </div>
