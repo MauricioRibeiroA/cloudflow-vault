@@ -69,15 +69,15 @@ const UploadFiles = () => {
 
   const fetchFiles = async () => {
   try {
-    let query = supabase
+    const query = supabase
       .from("files")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (currentFolder) {
-      query = query.eq("folder_id", currentFolder);
+      query.eq("folder_id", currentFolder);
     } else {
-      query = query.is("folder_id", null);
+      query.is("folder_id", null);
     }
 
     const { data, error } = await query;
@@ -88,6 +88,7 @@ const UploadFiles = () => {
     console.error("Erro ao carregar arquivos:", error);
   }
 };
+
 
 
   const fetchStorageUsage = async () => {
