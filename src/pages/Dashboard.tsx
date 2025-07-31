@@ -61,6 +61,7 @@ const Dashboard = () => {
     }
   }, [user]);
 
+  console.log("🔍 ID do usuário logado:", user?.id);
   const fetchProfile = async () => {
     try {
       const { data, error } = await supabase
