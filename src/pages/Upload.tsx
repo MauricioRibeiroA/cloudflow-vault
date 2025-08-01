@@ -94,20 +94,24 @@ const UploadFiles = () => {
 
 
   const fetchStorageUsage = async () => {
+  if (!accessToken) return; // dupla checagem
+
   try {
     const { data, error } = await supabase.functions.invoke('b2-file-manager', {
-      body: { action: 'list_usage' },
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${session?.access_token}`
-      }
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: { action: 'list_usage' }
     });
-
     if (error) throw error;
     setStorageUsage(data);
-  } catch (error) {
-    console.error("Erro ao carregar uso de storage:", error);
+  } catch (err) {
+    console.error('Erro ao carregar uso de storage:', err);
   }
 };
+
 
 
   React.useEffect(() => {
