@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Upload, X, File, CheckCircle, AlertCircle, Cloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
