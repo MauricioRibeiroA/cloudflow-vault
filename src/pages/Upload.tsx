@@ -400,14 +400,7 @@ const UploadFiles = () => {
               </div>
             </DialogContent>
           </Dialog>
-          
-          <FileUpload 
-            currentFolder={currentFolder} 
-            onUploadComplete={() => {
-              fetchFiles();
-              fetchStorageUsage();
-            }} 
-          />
+
           
           <B2FileUpload 
             currentFolder={currentFolder} 
