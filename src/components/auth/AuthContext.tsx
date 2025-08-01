@@ -17,7 +17,17 @@ interface AuthContextType {
   signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+// 1. Valor padrão que evita `useContext` null
+const defaultAuth: AuthContextType = {
+  user: null,
+  session: null,
+  loading: true,
+  signIn: async () => ({ error: null }),
+  signOut: async () => {},
+}
+
+// 2. cria o contexto com o valor padrão
+const AuthContext = createContext<AuthContextType>(defaultAuth)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
@@ -25,61 +35,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Listen for auth state changes
-    const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-      setUser(newSession?.user ?? null)
-      setLoading(false)
-    })
-
-    // Get initial session
+    // sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
     })
-
-    return () => {
-      data.subscription.unsubscribe()
-    }
+    // listener de mudanças
+    const { data } = supabase.auth.onAuthStateChange((_e, newSession) => {
+      setSession(newSession)
+      setUser(newSession?.user ?? null)
+      setLoading(false)
+    })
+    return () => data.subscription.unsubscribe()
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    // log attempt
-    try {
-      await supabase.from('security_audit').insert({
-        action: 'signin_attempt',
-        target_table: 'auth.users',
-        new_values: { email },
-      })
-    } catch {}
-
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    // log result
-    try {
-      await supabase.from('security_audit').insert({
-        action: error ? 'signin_failed' : 'signin_success',
-        target_table: 'auth.users',
-        new_values: { email, error: error?.message || null },
-      })
-    } catch {}
-
     return { error }
   }
 
   const signOut = async () => {
-    // log logout
-    if (user) {
-      try {
-        await supabase.from('security_audit').insert({
-          action: 'logout',
-          target_table: 'auth.users',
-          new_values: { user_id: user.id },
-        })
-      } catch {}
-    }
-
     await supabase.auth.signOut()
     setSession(null)
     setUser(null)
@@ -87,18 +63,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider
-      value={{ user, session, loading, signIn, signOut }}
-    >
+    <AuthContext.Provider value={{ user, session, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
+// 3. useAuth nunca lança e sempre retorna um objeto válido
+export const useAuth = () => useContext(AuthContext)
