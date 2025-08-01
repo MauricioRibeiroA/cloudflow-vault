@@ -1,493 +1,215 @@
-import React, { useState, useCallback } from "react";
-import { useAuth } from "@/components/auth/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileUp, FolderPlus, Upload, FileText, Folder, Download, Trash2, Cloud, HardDrive, BarChart3 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { FileUpload } from "@/components/ui/file-upload";
-import { B2FileUpload } from "@/components/ui/b2-file-upload";
+// src/pages/Upload.tsx
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '@/components/auth/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card'
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from '@/components/ui/table'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import {
+  FolderPlus,
+  Folder,
+  FileText,
+  BarChart3,
+  HardDrive,
+} from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { B2FileUpload } from '@/components/ui/b2-file-upload'
 
-interface File {
-  id: string;
-  name: string;
-  file_path: string;
-  file_size: number;
-  file_type: string;
-  folder_id?: string;
-  uploaded_by: string;
-  created_at: string;
-}
+interface B2Folder { id: string; name: string; parent: string | null }
+interface B2File { name: string; filePath: string; size: number; type: string; createdAt: string }
 
-interface Folder {
-  id: string;
-  name: string;
-  parent_id?: string;
-  created_by: string;
-  created_at: string;
-}
+export default function Upload() {
+  const { session } = useAuth()
+  const token = session?.access_token!
+  const toast = useToast().toast
 
-interface StorageUsage {
-  totalUsageBytes: number;
-  totalUsageGB: number;
-  storageLimitGB: number;
-  usagePercentage: number;
-}
+  // company_id: null for super_admin
+  const [companyId] = useState<string | null>(null)
+  const [groupName] = useState<string>('super_admin')
 
-const UploadFiles = () => {
-  const { session } = useAuth();
-  const accessToken = session?.access_token;
-  const user = session?.user;
-  const { toast } = useToast();
-  const [files, setFiles] = useState<File[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [showFolderDialog, setShowFolderDialog] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
+  const [folders, setFolders] = useState<B2Folder[]>([])
+  const [files, setFiles] = useState<B2File[]>([])
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null)
+  const [showFolderDialog, setShowFolderDialog] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [usage, setUsage] = useState<{ usedGB: number; limitGB: number; pct: number } | null>(null)
+
+  const invokeB2 = async (body: Record<string, any>) => {
+    const payload = { ...body, company_id: companyId, group_name: groupName }
+    const res = await supabase.functions.invoke('b2-file-manager', {
+      headers: { Authorization: `Bearer ${token}` },
+      body: payload,
+    })
+    if (res.error) throw res.error
+    return res.data
+  }
 
   const fetchFolders = async () => {
     try {
-      const { data, error } = await supabase
-        .from("folders")
-        .select("*")
-        .order("name");
-      
-      if (error) throw error;
-      setFolders(data || []);
-    } catch (error) {
-      console.error("Erro ao carregar pastas:", error);
+      const data = await invokeB2({ action: 'list_folders', parent: currentFolder })
+      setFolders(data.folders)
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao listar pastas', description: e.message })
     }
-  };
+  }
 
   const fetchFiles = async () => {
-  try {
-    const query = supabase
-      .from("files")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (currentFolder) {
-      query.eq("folder_id", currentFolder);
-    } else {
-      query.is("folder_id", null);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    setFiles(data || []);
-  } catch (error) {
-    console.error("Erro ao carregar arquivos:", error);
-  }
-};
-
-
-
-  const fetchStorageUsage = async () => {
-  try {
-    const { data, error } = await supabase.functions.invoke('b2-file-manager', {
-      body: { action: 'list_usage' },
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`
-      }
-    });
-
-    if (error) throw error;
-    setStorageUsage(data);
-  } catch (error) {
-    console.error("Erro ao carregar uso de storage:", error);
-  }
-};
-
-
-  React.useEffect(() => {
-    fetchFolders();
-    fetchFiles();
-    fetchStorageUsage();
-  }, [currentFolder]);
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user) return;
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
     try {
-      // Upload para storage
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = currentFolder ? `${currentFolder}/${fileName}` : fileName;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("files")
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Salvar metadata no banco
-      const { error: dbError } = await supabase
-        .from("files")
-        .insert({
-          name: file.name,
-          file_path: uploadData.path,
-          file_size: file.size,
-          file_type: file.type,
-          folder_id: currentFolder,
-          uploaded_by: user.id,
-        });
-
-      if (dbError) throw dbError;
-
-      toast({
-        title: "Sucesso",
-        description: "Arquivo enviado com sucesso!",
-      });
-
-      fetchFiles();
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao enviar arquivo",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-      // Reset input
-      event.target.value = "";
+      const data = await invokeB2({ action: 'list_files', folder: currentFolder })
+      setFiles(data.files)
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao listar arquivos', description: e.message })
     }
-  };
+  }
+
+  const fetchUsage = async () => {
+    try {
+      const data = await invokeB2({ action: 'get_usage' })
+      setUsage({ usedGB: data.usedGB, limitGB: data.limitGB, pct: data.pct })
+    } catch { /* silent */ }
+  }
 
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim() || !user) return;
-
+    if (!newFolderName.trim()) return
     try {
-      const { error } = await supabase
-        .from("folders")
-        .insert({
-          name: newFolderName,
-          parent_id: currentFolder,
-          created_by: user.id,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Pasta criada com sucesso!",
-      });
-
-      setNewFolderName("");
-      setShowFolderDialog(false);
-      fetchFolders();
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao criar pasta",
-        variant: "destructive",
-      });
+      await invokeB2({
+        action: 'create_folder',
+        parent: currentFolder,
+        folder_name: newFolderName.trim(),
+      })
+      setNewFolderName('')
+      setShowFolderDialog(false)
+      fetchFolders()
+      toast({ title: 'Pasta criada no B2' })
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao criar pasta', description: e.message })
     }
-  };
+  }
 
-  const handleDownloadFromB2 = async (file: File) => {
-    if (!session?.access_token) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Sessão não encontrada. Faça login novamente.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleDownload = async (file: B2File) => {
     try {
-      const { data, error } = await supabase.functions.invoke('b2-download-url', {
-        body: { fileId: file.id },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-
-      if (error) throw error;
-
-      // Open the signed URL in a new tab for download
-      window.open(data.signedUrl, '_blank');
-
-      toast({
-        title: "Download iniciado",
-        description: `Download de ${data.fileName} foi iniciado.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro no download",
-        description: error.message || "Erro ao baixar arquivo",
-        variant: "destructive",
-      });
+      const { downloadUrl } = await invokeB2({
+        action: 'get_download_url',
+        file_path: file.filePath,
+      })
+      window.open(downloadUrl, '_blank')
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao baixar', description: e.message })
     }
-  };
+  }
 
-  const handleDeleteFromB2 = async (file: File) => {
-    if (!session?.access_token) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Sessão não encontrada. Faça login novamente.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleDelete = async (file: B2File) => {
+    if (!confirm(`Excluir ${file.name}?`)) return
     try {
-      const { error } = await supabase.functions.invoke('b2-file-manager', {
-        body: { 
-          action: 'delete',
-          fileId: file.id 
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Arquivo excluído do Backblaze B2 com sucesso!",
-      });
-
-      fetchFiles();
-      fetchStorageUsage();
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao excluir arquivo",
-        variant: "destructive",
-      });
+      await invokeB2({ action: 'delete_file', file_path: file.filePath })
+      fetchFiles()
+      toast({ title: 'Arquivo excluído no B2' })
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: e.message })
     }
-  };
+  }
 
-  const handleDownload = async (file: File) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from("files")
-        .download(file.file_path);
+  useEffect(() => {
+    if (!token) return
+    fetchFolders()
+    fetchFiles()
+    fetchUsage()
+  }, [token, currentFolder])
 
-      if (error) throw error;
-
-      // Criar URL para download
-      const url = URL.createObjectURL(data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Sucesso",
-        description: "Download iniciado!",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao baixar arquivo",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteFile = async (file: File) => {
-    try {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("files")
-        .remove([file.file_path]);
-
-      if (storageError) throw storageError;
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from("files")
-        .delete()
-        .eq("id", file.id);
-
-      if (dbError) throw dbError;
-
-      toast({
-        title: "Sucesso",
-        description: "Arquivo excluído com sucesso!",
-      });
-
-      fetchFiles();
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao excluir arquivo",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
-  const getCurrentFolderName = () => {
-    if (!currentFolder) return "Raiz";
-    const folder = folders.find(f => f.id === currentFolder);
-    return folder?.name || "Pasta Desconhecida";
-  };
-
-  const getVisibleFolders = () => {
-    return folders.filter(folder => folder.parent_id === currentFolder);
-  };
+  if (!token) return null
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Arquivos</h1>
-          <p className="text-muted-foreground">
-            Gerencie arquivos no Supabase Storage e Backblaze B2
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <FolderPlus className="mr-2 h-4 w-4" />
-                Nova Pasta
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Criar Nova Pasta</DialogTitle>
-                <DialogDescription>
-                  Digite o nome da nova pasta
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="folder-name">Nome da Pasta</Label>
-                  <Input
-                    id="folder-name"
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    placeholder="Nome da pasta"
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setShowFolderDialog(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleCreateFolder}>
-                    Criar
-                  </Button>
-                </div>
+      {/* Ações */}
+      <div className="flex items-center gap-2 mb-4">
+        <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <FolderPlus className="mr-2 h-4 w-4" /> Nova Pasta
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Criar Pasta no B2</DialogTitle>
+              <DialogDescription>Informe o nome</DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 space-y-4">
+              <Label htmlFor="folder-name">Nome</Label>
+              <Input
+                id="folder-name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Ex: Projetos"
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowFolderDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateFolder}>Criar</Button>
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-          
-          <B2FileUpload 
-            currentFolder={currentFolder} 
-            onUploadComplete={() => {
-              fetchFiles();
-              fetchStorageUsage();
-            }} 
-          />
-        </div>
+        <B2FileUpload
+          currentFolder={currentFolder}
+          onUploadComplete={() => { fetchFiles(); fetchUsage() }}
+        />
       </div>
 
-      {/* Storage Usage */}
-      {storageUsage && (
+      {/* Uso de Storage */}
+      {usage && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Uso de Armazenamento
+              <BarChart3 className="h-5 w-5" /> Uso de Storage
             </CardTitle>
             <CardDescription>
-              Monitoramento do espaço utilizado em sua conta
+              {usage.usedGB.toFixed(2)} / {usage.limitGB.toFixed(2)} GB
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">
-                  {storageUsage.totalUsageGB.toFixed(2)} GB de {storageUsage.storageLimitGB} GB utilizados
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {storageUsage.usagePercentage.toFixed(1)}%
-                </span>
-              </div>
-              <Progress value={storageUsage.usagePercentage} className="h-2" />
-              {storageUsage.usagePercentage > 90 && (
-                <div className="text-sm text-amber-600">
-                  ⚠️ Você está próximo do limite de armazenamento
-                </div>
-              )}
+            <div className="flex items-center gap-2">
+              <HardDrive className="h-5 w-5 text-green-500" />
+              <span className="font-medium">{usage.pct.toFixed(1)}%</span>
             </div>
+            <Progress value={usage.pct} className="h-2" />
           </CardContent>
         </Card>
       )}
 
-      {/* Breadcrumb */}
-      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setCurrentFolder(null)}
-          className="h-auto p-1"
-        >
-          Início
-        </Button>
-        {currentFolder && (
-          <>
-            <span>/</span>
-            <span>{getCurrentFolderName()}</span>
-          </>
-        )}
-      </div>
-
-      {/* Upload Progress */}
-      {isUploading && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Enviando arquivo...</span>
-                <span>{Math.round(uploadProgress)}%</span>
-              </div>
-              <Progress value={uploadProgress} />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Files and Folders Table */}
+      {/* Conteúdo B2 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Folder className="h-5 w-5" />
-            {getCurrentFolderName()}
+            {currentFolder || 'Raiz'}
           </CardTitle>
-          <CardDescription>
-            Arquivos e pastas nesta localização
-          </CardDescription>
+          <CardDescription>Pastas e arquivos no B2</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -496,104 +218,45 @@ const UploadFiles = () => {
                 <TableHead>Nome</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Tamanho</TableHead>
-                <TableHead>Storage</TableHead>
-                <TableHead>Data de Criação</TableHead>
+                <TableHead>Data</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Folders */}
-              {getVisibleFolders().map((folder) => (
+              {folders.map((f) => (
                 <TableRow
-                  key={folder.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setCurrentFolder(folder.id)}
+                  key={f.id}
+                  className="cursor-pointer hover:bg-muted-foreground/5"
+                  onClick={() => setCurrentFolder(f.id)}
                 >
-                  <TableCell className="flex items-center gap-2">
-                    <Folder className="h-4 w-4 text-blue-500" />
-                    <span className="font-medium">{folder.name}</span>
+                  <TableCell><Folder className="h-4 w-4" /></TableCell>
+                  <TableCell>{f.name}</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell className="text-right">—</TableCell>
+                </TableRow>
+              ))}
+              {files.map((file) => (
+                <TableRow key={file.filePath} className="hover:bg-muted-foreground/5">
+                  <TableCell><FileText className="h-4 w-4" /></TableCell>
+                  <TableCell
+                    className="cursor-pointer text-primary hover:underline"
+                    onClick={() => handleDownload(file)}
+                  >
+                    {file.name}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">Pasta</Badge>
-                  </TableCell>
-                  <TableCell>-</TableCell>
-                  <TableCell>-</TableCell>
-                  <TableCell>
-                    {new Date(folder.created_at).toLocaleDateString("pt-BR")}
-                  </TableCell>
+                  <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
+                  <TableCell>{file.type}</TableCell>
+                  <TableCell>{new Date(file.createdAt).toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentFolder(folder.id);
-                      }}
-                    >
-                      Abrir
-                    </Button>
+                    <Button variant="ghost" onClick={() => handleDelete(file)}>🗑️</Button>
                   </TableCell>
                 </TableRow>
               ))}
-
-              {/* Files */}
-              {files.map((file) => {
-                const isB2File = file.file_path.includes('/');
-                
-                return (
-                  <TableRow key={file.id}>
-                    <TableCell className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-500" />
-                      <span>{file.name}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{file.file_type || "Arquivo"}</Badge>
-                    </TableCell>
-                    <TableCell>{formatFileSize(file.file_size)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {isB2File ? (
-                          <>
-                            <Cloud className="h-3 w-3 text-blue-500" />
-                            <span className="text-xs">B2</span>
-                          </>
-                        ) : (
-                          <>
-                            <HardDrive className="h-3 w-3 text-green-500" />
-                            <span className="text-xs">Supabase</span>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(file.created_at).toLocaleDateString("pt-BR")}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => isB2File ? handleDownloadFromB2(file) : handleDownload(file)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => isB2File ? handleDeleteFromB2(file) : handleDeleteFile(file)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-
-              {getVisibleFolders().length === 0 && files.length === 0 && (
+              {folders.length === 0 && files.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    Nesta pasta não há arquivos nem pastas
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    Não há itens nesta pasta
                   </TableCell>
                 </TableRow>
               )}
@@ -602,7 +265,5 @@ const UploadFiles = () => {
         </CardContent>
       </Card>
     </div>
-  );
-};
-
-export default UploadFiles;
+  )
+}
