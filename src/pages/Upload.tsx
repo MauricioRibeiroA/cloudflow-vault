@@ -94,16 +94,11 @@ const UploadFiles = () => {
 
 
   const fetchStorageUsage = async () => {
-  if (!session?.access_token) {
-    console.log("Sessão não disponível para buscar uso de storage");
-    return;
-  }
-
   try {
     const { data, error } = await supabase.functions.invoke('b2-file-manager', {
       body: { action: 'list_usage' },
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${session?.access_token}`
       }
     });
 
@@ -118,13 +113,8 @@ const UploadFiles = () => {
   React.useEffect(() => {
     fetchFolders();
     fetchFiles();
+    fetchStorageUsage();
   }, [currentFolder]);
-
-  React.useEffect(() => {
-    if (session?.access_token) {
-      fetchStorageUsage();
-    }
-  }, [session?.access_token, currentFolder]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
