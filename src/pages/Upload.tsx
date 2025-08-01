@@ -202,7 +202,10 @@ const UploadFiles = () => {
   const handleDownloadFromB2 = async (file: File) => {
     try {
       const { data, error } = await supabase.functions.invoke('b2-download-url', {
-        body: { fileId: file.id }
+        body: { fileId: file.id },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
       });
 
       if (error) throw error;
@@ -229,6 +232,9 @@ const UploadFiles = () => {
         body: { 
           action: 'delete',
           fileId: file.id 
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
         }
       });
 
