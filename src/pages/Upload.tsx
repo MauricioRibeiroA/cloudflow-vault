@@ -1,148 +1,191 @@
 // src/pages/Upload.tsx
-import React, { useState, useCallback, useEffect } from "react";
-import { useAuth } from "@/components/auth/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileUp, FolderPlus, FileText, Folder, Download, Trash2, Cloud, HardDrive, BarChart3 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-// import { FileUpload } from "@/components/ui/file-upload";  // Removido
-import { B2FileUpload } from "@/components/ui/b2-file-upload";
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '@/components/auth/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card'
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from '@/components/ui/table'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import {
+  FolderPlus,
+  Folder,
+  FileText,
+  BarChart3,
+  HardDrive,
+  Cloud,
+} from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { B2FileUpload } from '@/components/ui/b2-file-upload'
 
 interface Folder {
-  id: string;
-  name: string;
+  id: string
+  name: string
 }
 
 interface FileRecord {
-  id: string;
-  name: string;
-  file_path: string;
-  file_size: number;
-  file_type: string;
-  folder_id: string | null;
-  created_at: string;
+  id: string
+  name: string
+  file_path: string
+  file_size: number
+  file_type: string
+  folder_id: string | null
+  created_at: string
 }
 
 interface StorageUsage {
-  totalUsageGB: number;
-  storageLimitGB: number;
-  usagePercentage: number;
+  totalUsageGB: number
+  storageLimitGB: number
+  usagePercentage: number
 }
 
-const UploadFiles: React.FC = () => {
-  const { session } = useAuth();
-  const accessToken = session?.access_token;
-  const { toast } = useToast();
+export default function Upload() {
+  const { session } = useAuth()
+  const accessToken = session?.access_token
+  const { toast } = useToast()
 
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [files, setFiles] = useState<FileRecord[]>([]);
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
-  const [showFolderDialog, setShowFolderDialog] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [files, setFiles] = useState<FileRecord[]>([])
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null)
+  const [showFolderDialog, setShowFolderDialog] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null)
 
   const fetchFolders = async () => {
-    const { data, error } = await supabase.from("folders").select("*").order("name");
-    if (!error) setFolders(data || []);
-  };
+    const { data, error } = await supabase
+      .from('folders')
+      .select('*')
+      .order('name')
+    if (error) {
+      console.error('Erro ao carregar pastas:', error)
+      toast({ variant: 'destructive', title: 'Erro ao carregar pastas' })
+    } else {
+      setFolders(data || [])
+    }
+  }
 
   const fetchFiles = async () => {
-    let query = supabase.from("files").select("*").order("created_at", { ascending: false });
-    if (currentFolder) query = query.eq("folder_id", currentFolder);
-    const { data, error } = await query;
-    if (!error) setFiles(data || []);
-  };
+    let query = supabase.from('files').select('*').order('created_at', { ascending: false })
+    if (currentFolder) {
+      query = query.eq('folder_id', currentFolder)
+    }
+    const { data, error } = await query
+    if (error) {
+      console.error('Erro ao carregar arquivos:', error)
+      toast({ variant: 'destructive', title: 'Erro ao carregar arquivos' })
+    } else {
+      setFiles(data || [])
+    }
+  }
 
   const fetchStorageUsage = async () => {
-    const { data, error } = await supabase.functions.invoke("list_usage", {
+    const { data, error } = await supabase.functions.invoke('list_usage', {
       headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!error) setStorageUsage(data as StorageUsage);
-  };
+    })
+    if (error) {
+      console.error('Erro ao carregar uso de storage:', error)
+      toast({ variant: 'destructive', title: 'Erro ao carregar uso de storage' })
+    } else {
+      setStorageUsage(data as StorageUsage)
+    }
+  }
 
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return;
-    const { error } = await supabase.from("folders").insert({
-      name: newFolderName.trim(),
-      parent: currentFolder,
-    });
-    if (!error) {
-      setNewFolderName("");
-      setShowFolderDialog(false);
-      fetchFolders();
+    if (!newFolderName.trim()) return
+    const { error } = await supabase
+      .from('folders')
+      .insert({ name: newFolderName.trim(), parent: currentFolder })
+    if (error) {
+      console.error('Erro ao criar pasta:', error)
+      toast({ variant: 'destructive', title: 'Erro ao criar pasta' })
+    } else {
+      setNewFolderName('')
+      setShowFolderDialog(false)
+      fetchFolders()
+      toast({ title: 'Pasta criada com sucesso' })
     }
-  };
+  }
+
+  const handleDownload = (file: FileRecord) => {
+    // implementar download do arquivo do Supabase ou B2
+    console.log('Download file:', file)
+  }
 
   useEffect(() => {
-    if (!accessToken) return;
-    fetchFolders();
-    fetchFiles();
-    fetchStorageUsage();
-  }, [currentFolder, accessToken]);
+    if (!accessToken) return
+    fetchFolders()
+    fetchFiles()
+    fetchStorageUsage()
+  }, [accessToken, currentFolder])
 
-  if (!accessToken) return null;
+  if (!accessToken) return null
 
   return (
     <div className="space-y-6">
       {/* Header & Actions */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Arquivos</h1>
-          <p className="text-muted-foreground">
-            Gerencie arquivos no Supabase Storage e Backblaze B2
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {/* Nova Pasta */}
-          <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <FolderPlus className="mr-2 h-4 w-4" />
-                Nova Pasta
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Criar Nova Pasta</DialogTitle>
-                <DialogDescription>Digite o nome da nova pasta</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <Label htmlFor="folder-name">Nome da Pasta</Label>
-                <Input
-                  id="folder-name"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="Ex: Projetos"
-                />
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setShowFolderDialog(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleCreateFolder}>Criar</Button>
-                </div>
+      <div className="flex items-center gap-2 mb-4">
+        <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <FolderPlus className="mr-2 h-4 w-4" />
+              Nova Pasta
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Criar Nova Pasta</DialogTitle>
+              <DialogDescription>Digite o nome da nova pasta</DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 space-y-4">
+              <Label htmlFor="folder-name">Nome da Pasta</Label>
+              <Input
+                id="folder-name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Ex: Projetos"
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowFolderDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateFolder}>Criar</Button>
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-          {/* Botão “Upload” do Supabase removido */}
-          
-          {/* Upload B2 */}
-          <B2FileUpload
-            currentFolder={currentFolder}
-            onUploadComplete={() => {
-              fetchFiles();
-              fetchStorageUsage();
-            }}
-          />
-        </div>
+        {/* Botão “Upload” do Supabase removido */}
+
+        <B2FileUpload
+          currentFolder={currentFolder}
+          onUploadComplete={() => {
+            fetchFiles()
+            fetchStorageUsage()
+          }}
+        />
       </div>
 
       {/* Storage Usage */}
@@ -154,7 +197,7 @@ const UploadFiles: React.FC = () => {
               Uso de Armazenamento
             </CardTitle>
             <CardDescription>
-              {storageUsage.totalUsageGB.toFixed(2)} GB de{" "}
+              {storageUsage.totalUsageGB.toFixed(2)} GB de{' '}
               {storageUsage.storageLimitGB.toFixed(2)} GB utilizados
             </CardDescription>
           </CardHeader>
@@ -170,11 +213,13 @@ const UploadFiles: React.FC = () => {
         </Card>
       )}
 
-      {/* Table of Folders and Files */}
+      {/* Tabela de Pastas e Arquivos */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {currentFolder ? folders.find((f) => f.id === currentFolder)?.name : "Raiz"}
+            {currentFolder
+              ? folders.find((f) => f.id === currentFolder)?.name
+              : 'Raiz'}
           </CardTitle>
           <CardDescription>Pastas e arquivos nesta localização</CardDescription>
         </CardHeader>
@@ -191,7 +236,11 @@ const UploadFiles: React.FC = () => {
             </TableHeader>
             <TableBody>
               {folders.map((f) => (
-                <TableRow key={f.id}>
+                <TableRow
+                  key={f.id}
+                  className="cursor-pointer hover:bg-muted-foreground/5"
+                  onClick={() => setCurrentFolder(f.id)}
+                >
                   <TableCell><Folder className="h-4 w-4" /></TableCell>
                   <TableCell>{f.name}</TableCell>
                   <TableCell>—</TableCell>
@@ -200,9 +249,14 @@ const UploadFiles: React.FC = () => {
                 </TableRow>
               ))}
               {files.map((file) => (
-                <TableRow key={file.id}>
+                <TableRow key={file.id} className="hover:bg-muted-foreground/5">
                   <TableCell><FileText className="h-4 w-4" /></TableCell>
-                  <TableCell>{file.name}</TableCell>
+                  <TableCell
+                    className="cursor-pointer text-primary hover:underline"
+                    onClick={() => handleDownload(file)}
+                  >
+                    {file.name}
+                  </TableCell>
                   <TableCell>{(file.file_size / 1024).toFixed(2)} KB</TableCell>
                   <TableCell>{file.file_type}</TableCell>
                   <TableCell>{new Date(file.created_at).toLocaleString()}</TableCell>
@@ -211,7 +265,7 @@ const UploadFiles: React.FC = () => {
               ))}
               {folders.length === 0 && files.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Nesta pasta não há arquivos nem pastas
                   </TableCell>
                 </TableRow>
@@ -221,7 +275,5 @@ const UploadFiles: React.FC = () => {
         </CardContent>
       </Card>
     </div>
-  );
-};
-
-export default UploadFiles;
+  )
+}
