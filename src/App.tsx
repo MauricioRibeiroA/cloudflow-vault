@@ -5,6 +5,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { AuthProvider } from '@/components/auth/AuthContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -25,106 +26,108 @@ const queryClient = new QueryClient()
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
 
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Dashboard />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Dashboard />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
-                  <AppLayout>
-                    <Admin />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
+                    <AppLayout>
+                      <Admin />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/upload"
-              element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Upload />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/upload"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Upload />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/business-rules"
-              element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <BusinessRules />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/business-rules"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <BusinessRules />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/logs"
-              element={
-                <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
-                  <AppLayout>
-                    <Logs />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/logs"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
+                    <AppLayout>
+                      <Logs />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/backup"
-              element={
-                <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
-                  <AppLayout>
-                    <Backup />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/backup"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
+                    <AppLayout>
+                      <Backup />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Settings />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Settings />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/companies"
-              element={
-                <ProtectedRoute requiredGroups={['super_admin']}>
-                  <AppLayout>
-                    <Companies />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/companies"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin']}>
+                    <AppLayout>
+                      <Companies />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   )
 }
