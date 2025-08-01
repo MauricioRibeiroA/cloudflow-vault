@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/components/auth/AuthContext'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { B2FileUpload } from '@/components/ui/B2FileUpload'
+import { B2FileUpload } from '@/components/ui/b2-file-upload'
 import { toast } from '@/hooks/use-toast'
 
 export default function Upload() {
@@ -14,14 +14,13 @@ export default function Upload() {
 
   useEffect(() => {
     if (!session) {
-      // não autenticado, manda pra login
       navigate('/auth')
     }
   }, [session, navigate])
 
   const handleUploadComplete = () => {
     toast({ title: 'Upload finalizado com sucesso!' })
-    // por exemplo, re-carregar a lista de arquivos:
+    // para forçar reload da lista:
     // setCurrentFolder(currentFolder)
   }
 
