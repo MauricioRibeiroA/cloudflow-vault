@@ -98,7 +98,7 @@ const UploadFiles = () => {
     const { data, error } = await supabase.functions.invoke('b2-file-manager', {
       body: { action: 'list_usage' },
       headers: {
-        Authorization: `Bearer ${user?.access_token}`
+        Authorization: `Bearer ${session?.access_token}`
       }
     });
 
