@@ -70,6 +70,30 @@ const UploadFiles = () => {
   };
 
   const fetchFiles = async () => {
+  try {
+    const query = supabase
+      .from("files")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (currentFolder) {
+      query.eq("folder_id", currentFolder);
+    } else {
+      query.is("folder_id", null);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    setFiles(data || []);
+  } catch (error) {
+    console.error("Erro ao carregar arquivos:", error);
+  }
+};
+
+
+
+  const fetchStorageUsage = async () => {
   if (!accessToken) return;
 
   try {
@@ -80,35 +104,17 @@ const UploadFiles = () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        action: 'list_files',
-        folder: currentFolder
+        action: 'list_usage'
       })
     });
     if (error) throw error;
-    setFiles(data);
+    setStorageUsage(data);
   } catch (err: any) {
-    console.error('Erro ao buscar arquivos:', err);
+    console.error('Erro ao carregar uso de storage:', err);
     toast.error(err.message);
   }
 };
 
-
-
-  const fetchStorageUsage = async () => {
-  try {
-    const { data, error } = await supabase.functions.invoke('b2-file-manager', {
-      body: { action: 'list_usage' },
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`
-      }
-    });
-
-    if (error) throw error;
-    setStorageUsage(data);
-  } catch (error) {
-    console.error("Erro ao carregar uso de storage:", error);
-  }
-};
 
 
   React.useEffect(() => {
