@@ -26,7 +26,7 @@ interface UploadFile {
 }
 
 export function B2FileUpload({ currentFolder, onUploadComplete }: B2FileUploadProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -63,7 +63,7 @@ export function B2FileUpload({ currentFolder, onUploadComplete }: B2FileUploadPr
   };
 
   const uploadFile = async (uploadFile: UploadFile) => {
-    if (!user) return;
+    if (!user || !session) return;
 
     try {
       // Step 1: Get signed URL

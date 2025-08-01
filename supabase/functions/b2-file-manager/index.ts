@@ -33,7 +33,7 @@ serve(async (req) => {
     // Get user profile and company
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('company_id, status')
+      .select('company_id, status, group_name')
       .eq('user_id', user.id)
       .single();
 
