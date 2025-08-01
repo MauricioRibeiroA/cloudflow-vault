@@ -1,77 +1,73 @@
-// src/components/ui/b2-file-upload.tsx
-import React, { useState, useRef, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Card, CardContent } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
+// src/components/auth/AuthContext.tsx
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from 'react'
+import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
-import { useAuth } from '@/components/auth/AuthContext'
-import { toast } from '@/hooks/use-toast'
-import {
-  Upload,
-  X,
-  File as FileIcon,
-  CheckCircle,
-  AlertCircle,
-  Cloud
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
 
-interface B2FileUploadProps {
-  currentFolder: string | null
-  onUploadComplete: () => void
+interface AuthContextType {
+  user: User | null
+  session: Session | null
+  loading: boolean
+  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signOut: () => Promise<void>
 }
 
-interface UploadFile {
-  file: File
-  id: string
-  progress: number
-  status:
-    | 'pending'
-    | 'getting_url'
-    | 'uploading'
-    | 'saving_metadata'
-    | 'completed'
-    | 'error'
-  error?: string
-  signedUrl?: string
-  filePath?: string
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }
 
-export function B2FileUpload({
-  currentFolder,
-  onUploadComplete
-}: B2FileUploadProps) {
-  const { user, session } = useAuth()
-  const accessToken = session?.access_token
-  const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([])
-  const [isDragOver, setIsDragOver] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const generateId = () => Math.random().toString(36).substr(2, 9)
+  useEffect(() => {
+    // obtém sessão inicial
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setUser(data.session?.user ?? null)
+      setLoading(false)
+    })
 
-  const fetchFiles = async () => {
-    if (!accessToken) return
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        'b2-file-manager',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            action: 'list_files',
-            folder: currentFolder
-          })
-        }
-      )
-      if (error) throw error
-      // processe os
+    // ouve mudanças de auth
+    const { data: { subscription } } =
+      supabase.auth.onAuthStateChange((_event, newSession) => {
+        setSession(newSession)
+        setUser(newSession?.user ?? null)
+        setLoading(false)
+      })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    return { error }
+  }
+
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    setSession(null)
+    setUser(null)
+    window.location.href = '/auth'
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, session, loading, signIn, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
