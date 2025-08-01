@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -107,7 +108,7 @@ export function B2FileUpload({ currentFolder, onUploadComplete }: B2FileUploadPr
       });
 
       if (!uploadResponse.ok) {
-        throw new Error(Upload failed: ${uploadResponse.statusText});
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
       }
 
       // Update progress during upload
@@ -150,7 +151,7 @@ export function B2FileUpload({ currentFolder, onUploadComplete }: B2FileUploadPr
 
       toast({
         title: "Upload concluído",
-        description: ${uploadFile.file.name} foi enviado para Backblaze B2 com sucesso.
+        description: `${uploadFile.file.name} foi enviado para Backblaze B2 com sucesso.`
       });
 
     } catch (error: any) {
@@ -165,7 +166,7 @@ export function B2FileUpload({ currentFolder, onUploadComplete }: B2FileUploadPr
 
       toast({
         title: "Erro no upload",
-        description: Falha ao enviar ${uploadFile.file.name}: ${error.message},
+        description: `Falha ao enviar ${uploadFile.file.name}: ${error.message}`,
         variant: "destructive"
       });
     }
