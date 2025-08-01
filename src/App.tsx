@@ -26,7 +26,7 @@ const queryClient = new QueryClient()
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider> {/* <-- Certifique-se de que este componente está com A maiúsculo */}
+      <AuthProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -46,16 +46,82 @@ export default function App() {
                 }
               />
 
-              {/* Demais rotas protegidas */}
-              <Route path="/upload" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Upload />
-                  </AppLayout>
-                </ProtectedRoute>
-              }/>
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
+                    <AppLayout>
+                      <Admin />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* ...outras rotas */}
+              <Route
+                path="/upload"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Upload />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/business-rules"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <BusinessRules />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/logs"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
+                    <AppLayout>
+                      <Logs />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/backup"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin', 'company_admin']}>
+                    <AppLayout>
+                      <Backup />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Settings />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/companies"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin']}>
+                    <AppLayout>
+                      <Companies />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
