@@ -42,7 +42,9 @@ interface StorageUsage {
 }
 
 const UploadFiles = () => {
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const accessToken = session?.access_token;
+  const user = session?.user;
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
