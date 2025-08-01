@@ -93,7 +93,7 @@ const UploadFiles = () => {
 
 
 
-  const fetchStorageUsage = async () => {
+ const fetchStorageUsage = async () => {
   if (!accessToken) return;
 
   try {
@@ -104,7 +104,9 @@ const UploadFiles = () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        action: 'list_usage'
+        action: 'list_usage',
+        group_name: user?.user_metadata.group_name,
+        company_id: user?.user_metadata.company_id
       })
     });
     if (error) throw error;
