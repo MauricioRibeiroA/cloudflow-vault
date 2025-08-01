@@ -94,11 +94,16 @@ const UploadFiles = () => {
 
 
   const fetchStorageUsage = async () => {
+  if (!session?.access_token) {
+    console.log("Sessão não disponível para buscar uso de storage");
+    return;
+  }
+
   try {
     const { data, error } = await supabase.functions.invoke('b2-file-manager', {
       body: { action: 'list_usage' },
       headers: {
-        Authorization: `Bearer ${session?.access_token}`
+        Authorization: `Bearer ${session.access_token}`
       }
     });
 
@@ -113,8 +118,13 @@ const UploadFiles = () => {
   React.useEffect(() => {
     fetchFolders();
     fetchFiles();
-    fetchStorageUsage();
   }, [currentFolder]);
+
+  React.useEffect(() => {
+    if (session?.access_token) {
+      fetchStorageUsage();
+    }
+  }, [session?.access_token, currentFolder]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -200,11 +210,20 @@ const UploadFiles = () => {
   };
 
   const handleDownloadFromB2 = async (file: File) => {
+    if (!session?.access_token) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Sessão não encontrada. Faça login novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('b2-download-url', {
         body: { fileId: file.id },
         headers: {
-          Authorization: `Bearer ${session?.access_token}`
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
@@ -227,6 +246,15 @@ const UploadFiles = () => {
   };
 
   const handleDeleteFromB2 = async (file: File) => {
+    if (!session?.access_token) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Sessão não encontrada. Faça login novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase.functions.invoke('b2-file-manager', {
         body: { 
@@ -234,7 +262,7 @@ const UploadFiles = () => {
           fileId: file.id 
         },
         headers: {
-          Authorization: `Bearer ${session?.access_token}`
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
