@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { B2FileUpload } from '@/components/ui/B2FileUpload'
+import { B2FileUpload } from '@/components/ui/b2-file-upload'
 import { toast } from '@/hooks/use-toast'
 
 export default function Upload() {
@@ -12,7 +12,6 @@ export default function Upload() {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [currentFolder, setCurrentFolder] = useState<string | null>(null)
 
-  // Load session token directly, bypassing useAuth()
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
@@ -33,7 +32,6 @@ export default function Upload() {
 
   const handleUploadComplete = () => {
     toast({ title: 'Upload finalizado com sucesso!' })
-    // opcional: recarregar lista de arquivos ou navegar
   }
 
   if (!accessToken) {
