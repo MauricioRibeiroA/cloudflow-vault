@@ -17,7 +17,7 @@ interface AuthContextType {
   signOut: () => Promise<void>
 }
 
-// -- Definimos um valor padrão que NÃO é undefined --
+// 1) Valor padrão não-undefined
 const defaultAuth: AuthContextType = {
   user: null,
   session: null,
@@ -26,7 +26,7 @@ const defaultAuth: AuthContextType = {
   signOut: async () => {},
 }
 
-// Criamos o contexto **com** esse valor padrão
+// 2) Cria contexto com default
 const AuthContext = createContext<AuthContextType>(defaultAuth)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -35,13 +35,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Pega sessão inicial
+    // sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
     })
-    // Escuta mudanças de auth
+    // listener de auth
     const { data } = supabase.auth.onAuthStateChange((_e, newSession) => {
       setSession(newSession)
       setUser(newSession?.user ?? null)
@@ -69,5 +69,5 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
 }
 
-// useAuth não lança mais erro — sempre retorna algo (o defaultAuth ou o valor real do provider)
+// 3) Hook simplificado, nunca retorna undefined
 export const useAuth = () => useContext(AuthContext)
