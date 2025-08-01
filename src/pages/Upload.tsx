@@ -70,24 +70,25 @@ const UploadFiles = () => {
   };
 
   const fetchFiles = async () => {
+  if (!accessToken) return;
+
   try {
-    const query = supabase
-      .from("files")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (currentFolder) {
-      query.eq("folder_id", currentFolder);
-    } else {
-      query.is("folder_id", null);
-    }
-
-    const { data, error } = await query;
-
+    const { data, error } = await supabase.functions.invoke('b2-file-manager', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'list_files',
+        folder: currentFolder
+      })
+    });
     if (error) throw error;
-    setFiles(data || []);
-  } catch (error) {
-    console.error("Erro ao carregar arquivos:", error);
+    setFiles(data);
+  } catch (err: any) {
+    console.error('Erro ao buscar arquivos:', err);
+    toast.error(err.message);
   }
 };
 
@@ -109,14 +110,12 @@ const UploadFiles = () => {
   }
 };
 
-React.useEffect(() => {
-  if (!accessToken) return;
 
-  fetchFolders();
-  fetchFiles();
-  fetchStorageUsage();
-}, [currentFolder, accessToken]);
-
+  React.useEffect(() => {
+    fetchFolders();
+    fetchFiles();
+    fetchStorageUsage();
+  }, [currentFolder]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
