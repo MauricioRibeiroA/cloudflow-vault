@@ -15,6 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 import { FileUpload } from "@/components/ui/file-upload";
 import { B2FileUpload } from "@/components/ui/b2-file-upload";
 
+const { session, user } = useAuth()
+const accessToken = session?.access_token
+
+
 interface File {
   id: string;
   name: string;
@@ -93,30 +97,21 @@ const UploadFiles = () => {
 
 
 
- const fetchStorageUsage = async () => {
-  if (!accessToken) return;
-
+  const fetchStorageUsage = async () => {
   try {
     const { data, error } = await supabase.functions.invoke('b2-file-manager', {
-      method: 'POST',
+      body: { action: 'list_usage' },
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        action: 'list_usage',
-        group_name: user?.user_metadata.group_name,
-        company_id: user?.user_metadata.company_id
-      })
+        Authorization: `Bearer ${session?.access_token}`
+      }
     });
+
     if (error) throw error;
     setStorageUsage(data);
-  } catch (err: any) {
-    console.error('Erro ao carregar uso de storage:', err);
-    toast.error(err.message);
+  } catch (error) {
+    console.error("Erro ao carregar uso de storage:", error);
   }
 };
-
 
 
   React.useEffect(() => {
