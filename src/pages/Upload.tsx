@@ -200,9 +200,21 @@ const UploadFiles = () => {
   };
 
   const handleDownloadFromB2 = async (file: File) => {
+    if (!session?.access_token) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Sessão não encontrada. Faça login novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('b2-download-url', {
-        body: { fileId: file.id }
+        body: { fileId: file.id },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (error) throw error;
@@ -224,11 +236,23 @@ const UploadFiles = () => {
   };
 
   const handleDeleteFromB2 = async (file: File) => {
+    if (!session?.access_token) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Sessão não encontrada. Faça login novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase.functions.invoke('b2-file-manager', {
         body: { 
           action: 'delete',
           fileId: file.id 
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
