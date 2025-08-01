@@ -1,37 +1,28 @@
 // src/pages/Upload.tsx
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/integrations/supabase/client'
-import { Button } from '@/components/ui/button'
+import { useAuth } from '@/components/auth/AuthContext'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { B2FileUpload } from '@/components/ui/b2-file-upload'
+import { B2FileUpload } from '@/components/ui/B2FileUpload'
 import { toast } from '@/hooks/use-toast'
 
 export default function Upload() {
   const navigate = useNavigate()
-  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const { session } = useAuth()
+  const accessToken = session?.access_token ?? null
   const [currentFolder, setCurrentFolder] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate('/auth')
-      } else {
-        setAccessToken(session.access_token)
-      }
-    })
-    const { data } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session) {
-        navigate('/auth')
-      } else {
-        setAccessToken(session.access_token)
-      }
-    })
-    return () => data.subscription.unsubscribe()
-  }, [navigate])
+    if (!session) {
+      // não autenticado, manda pra login
+      navigate('/auth')
+    }
+  }, [session, navigate])
 
   const handleUploadComplete = () => {
     toast({ title: 'Upload finalizado com sucesso!' })
+    // por exemplo, re-carregar a lista de arquivos:
+    // setCurrentFolder(currentFolder)
   }
 
   if (!accessToken) {
