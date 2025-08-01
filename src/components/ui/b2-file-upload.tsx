@@ -10,6 +10,10 @@ import { toast } from '@/hooks/use-toast';
 import { Upload, X, File, CheckCircle, AlertCircle, Cloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const { session, user } = useAuth()
+const accessToken = session?.access_token
+
+
 interface B2FileUploadProps {
   currentFolder: string | null;
   onUploadComplete: () => void;
@@ -63,86 +67,114 @@ export function B2FileUpload({ currentFolder, onUploadComplete }: B2FileUploadPr
   };
 
   const uploadFile = async (uploadFile: UploadFile) => {
-  const accessToken = session?.access_token;
-  if (!accessToken) return;
+    if (!user || !session) return;
 
-  // 1) Marca que vamos obter a URL
-  setUploadFiles(prev =>
-    prev.map(f =>
-      f.id === uploadFile.id
-        ? { ...f, status: 'getting_url', progress: 10 }
-        : f
-    )
-  );
+    try {
+      // Step 1: Get signed URL
+      setUploadFiles(prev => 
+        prev.map(f => f.id === uploadFile.id ? { 
+          ...f, 
+          status: 'getting_url' as const,
+          progress: 10 
+        } : f)
+      );
 
-  // 2) Pega URL de upload da Edge Function
-  const { data: urlData, error: urlError } = await supabase.functions.invoke('b2-upload-url', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: {
-      bucket: '<SEU_BUCKET>',
-      filename: uploadFile.file.name,
-      contentType: uploadFile.file.type
+      const { data: urlData, error: urlError } = await supabase.functions.invoke('b2-upload-url', {
+        body: {
+          fileName: uploadFile.file.name,
+          fileSize: uploadFile.file.size,
+          fileType: uploadFile.file.type || 'application/octet-stream',
+          folderId: currentFolder
+        }
+      });
+
+      if (urlError || !urlData.signedUrl) {
+        throw new Error(urlError?.message || 'Failed to get upload URL');
+      }
+
+      // Step 2: Upload to B2
+      setUploadFiles(prev => 
+        prev.map(f => f.id === uploadFile.id ? { 
+          ...f, 
+          status: 'uploading' as const,
+          progress: 20,
+          signedUrl: urlData.signedUrl,
+          filePath: urlData.filePath
+        } : f)
+      );
+
+      const uploadResponse = await fetch(urlData.signedUrl, {
+        method: 'PUT',
+        body: uploadFile.file,
+        headers: {
+          'Content-Type': uploadFile.file.type || 'application/octet-stream',
+        }
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+      }
+
+      // Update progress during upload
+      setUploadFiles(prev => 
+        prev.map(f => f.id === uploadFile.id ? { ...f, progress: 80 } : f)
+      );
+
+      // Step 3: Save metadata
+      setUploadFiles(prev => 
+        prev.map(f => f.id === uploadFile.id ? { 
+          ...f, 
+          status: 'saving_metadata' as const,
+          progress: 90 
+        } : f)
+      );
+
+      const { error: metadataError } = await supabase.functions.invoke('b2-file-manager', {
+        body: {
+          action: 'save_metadata',
+          fileName: uploadFile.file.name,
+          filePath: urlData.filePath,
+          fileSize: uploadFile.file.size,
+          fileType: uploadFile.file.type || 'application/octet-stream',
+          folderId: currentFolder
+        }
+      });
+
+      if (metadataError) {
+        throw new Error('Failed to save file metadata');
+      }
+
+      // Step 4: Complete
+      setUploadFiles(prev => 
+        prev.map(f => f.id === uploadFile.id ? { 
+          ...f, 
+          status: 'completed' as const, 
+          progress: 100 
+        } : f)
+      );
+
+      toast({
+        title: "Upload concluído",
+        description: `${uploadFile.file.name} foi enviado para Backblaze B2 com sucesso.`
+      });
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      setUploadFiles(prev => 
+        prev.map(f => f.id === uploadFile.id ? { 
+          ...f, 
+          status: 'error' as const, 
+          error: error.message 
+        } : f)
+      );
+
+      toast({
+        title: "Erro no upload",
+        description: `Falha ao enviar ${uploadFile.file.name}: ${error.message}`,
+        variant: "destructive"
+      });
     }
-  });
-  if (urlError) throw urlError;
-
-  setUploadFiles(prev =>
-    prev.map(f =>
-      f.id === uploadFile.id
-        ? { ...f, status: 'uploading', signedUrl: urlData.uploadUrl, progress: 20 }
-        : f
-    )
-  );
-
-  // 3) Envia o arquivo ao B2
-  const uploadRes = await fetch(urlData.uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': uploadFile.file.type,
-      Authorization: urlData.authorizationToken
-    },
-    body: uploadFile.file
-  });
-  if (!uploadRes.ok) throw new Error(`Upload B2 falhou: ${uploadRes.statusText}`);
-
-  setUploadFiles(prev =>
-    prev.map(f =>
-      f.id === uploadFile.id
-        ? { ...f, status: 'saving_metadata', progress: 80 }
-        : f
-    )
-  );
-
-  // 4) Confirma no b2-file-manager
-  const { error: metadataError } = await supabase.functions.invoke('b2-file-manager', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: {
-      action: 'confirm_upload',
-      fileId: urlData.fileId
-    }
-  });
-  if (metadataError) throw metadataError;
-
-  setUploadFiles(prev =>
-    prev.map(f =>
-      f.id === uploadFile.id
-        ? { ...f, status: 'completed', progress: 100 }
-        : f
-    )
-  );
-
-  onUploadComplete();
-  toast.success('Upload concluído!');
-};
-
+  };
 
   const uploadAllFiles = async () => {
     const pendingFiles = uploadFiles.filter(f => f.status === 'pending');
