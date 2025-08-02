@@ -41,7 +41,7 @@ import { useToast } from '@/hooks/use-toast'
 import { B2FileUpload } from '@/components/ui/b2-file-upload'
 
 interface B2Folder { id: string; name: string; parent: string | null }
-interface B2File { name: string; filePath: string; size: number; type: string; createdAt: string }
+interface B2File { id: string; name: string; filePath: string; size: number; type: string; createdAt: string }
 
 export default function Upload() {
   const { session } = useAuth()
@@ -71,8 +71,8 @@ export default function Upload() {
 
   const fetchFolders = async () => {
     try {
-      const data = await invokeB2({ action: 'list_folders', parent: currentFolder })
-      setFolders(data.folders)
+      const data = await invokeB2({ action: 'list_folders', parentId: currentFolder })
+      setFolders(data.map((f: any) => ({ id: f.id, name: f.name, parent: f.parent_id })))
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Erro ao listar pastas', description: e.message })
     }
@@ -80,8 +80,15 @@ export default function Upload() {
 
   const fetchFiles = async () => {
     try {
-      const data = await invokeB2({ action: 'list_files', folder: currentFolder })
-      setFiles(data.files)
+      const data = await invokeB2({ action: 'list_files', folderId: currentFolder })
+      setFiles(data.map((f: any) => ({
+        name: f.name,
+        filePath: f.file_path,
+        size: f.file_size,
+        type: f.file_type,
+        createdAt: f.created_at,
+        id: f.id
+      })))
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Erro ao listar arquivos', description: e.message })
     }
@@ -90,7 +97,11 @@ export default function Upload() {
   const fetchUsage = async () => {
     try {
       const data = await invokeB2({ action: 'get_usage' })
-      setUsage({ usedGB: data.usedGB, limitGB: data.limitGB, pct: data.pct })
+      setUsage({ 
+        usedGB: data.totalUsageGB, 
+        limitGB: data.storageLimitGB, 
+        pct: data.usagePercentage 
+      })
     } catch { /* silent */ }
   }
 
@@ -99,13 +110,13 @@ export default function Upload() {
     try {
       await invokeB2({
         action: 'create_folder',
-        parent: currentFolder,
-        folder_name: newFolderName.trim(),
+        parentId: currentFolder,
+        folderName: newFolderName.trim(),
       })
       setNewFolderName('')
       setShowFolderDialog(false)
       fetchFolders()
-      toast({ title: 'Pasta criada no B2' })
+      toast({ title: 'Pasta criada' })
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Erro ao criar pasta', description: e.message })
     }
@@ -113,11 +124,11 @@ export default function Upload() {
 
   const handleDownload = async (file: B2File) => {
     try {
-      const { downloadUrl } = await invokeB2({
+      const { url } = await invokeB2({
         action: 'get_download_url',
-        file_path: file.filePath,
+        fileId: file.id,
       })
-      window.open(downloadUrl, '_blank')
+      window.open(url, '_blank')
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Erro ao baixar', description: e.message })
     }
@@ -126,9 +137,10 @@ export default function Upload() {
   const handleDelete = async (file: B2File) => {
     if (!confirm(`Excluir ${file.name}?`)) return
     try {
-      await invokeB2({ action: 'delete_file', file_path: file.filePath })
+      await invokeB2({ action: 'delete', fileId: file.id })
       fetchFiles()
-      toast({ title: 'Arquivo excluído no B2' })
+      fetchUsage()
+      toast({ title: 'Arquivo excluído' })
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Erro ao excluir', description: e.message })
     }
@@ -237,7 +249,7 @@ export default function Upload() {
                 </TableRow>
               ))}
               {files.map((file) => (
-                <TableRow key={file.filePath} className="hover:bg-muted-foreground/5">
+                <TableRow key={file.id} className="hover:bg-muted-foreground/5">
                   <TableCell><FileText className="h-4 w-4" /></TableCell>
                   <TableCell
                     className="cursor-pointer text-primary hover:underline"

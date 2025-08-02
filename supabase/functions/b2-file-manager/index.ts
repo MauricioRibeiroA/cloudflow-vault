@@ -70,6 +70,154 @@ serve(async (req) => {
     });
 
     switch (action) {
+      case 'list_folders':
+        // List folders from database
+        let foldersQuery = supabaseClient
+          .from('folders')
+          .select('id, name, parent_id, created_at')
+          .order('name');
+
+        if (payload.parentId) {
+          foldersQuery = foldersQuery.eq('parent_id', payload.parentId);
+        } else {
+          foldersQuery = foldersQuery.is('parent_id', null);
+        }
+
+        const { data: folders, error: foldersError } = await foldersQuery;
+        if (foldersError) throw foldersError;
+
+        return new Response(JSON.stringify(folders), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'list_files':
+        // List files from database
+        const { data: files, error: filesError } = await supabaseClient
+          .from('files')
+          .select('id, name, file_path, file_size, file_type, created_at')
+          .eq('folder_id', payload.folderId || null)
+          .order('name');
+
+        if (filesError) throw filesError;
+
+        return new Response(JSON.stringify(files), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'create_folder':
+        // Create folder in database
+        const { folderName, parentId } = payload;
+        
+        const { data: newFolder, error: createError } = await supabaseClient
+          .from('folders')
+          .insert({
+            name: folderName,
+            parent_id: parentId || null,
+            created_by: user.id,
+            company_id: profile.company_id || null,
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+
+        // Log the folder creation
+        await supabaseClient
+          .from('logs')
+          .insert({
+            user_id: user.id,
+            action: 'folder_create',
+            target_type: 'folder',
+            target_name: folderName,
+            company_id: profile.company_id || null,
+          });
+
+        return new Response(JSON.stringify(newFolder), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'get_download_url':
+        // Generate download URL for file
+        const { fileId } = payload;
+        
+        // Get file info and verify access
+        const { data: fileInfo } = await supabaseClient
+          .from('files')
+          .select('file_path, name, company_id, uploaded_by')
+          .eq('id', fileId)
+          .single();
+
+        // Verify access: same company or super admin can access their own files
+        if (fileInfo?.company_id !== profile.company_id && 
+            !(isSuperAdmin && fileInfo?.uploaded_by === user.id)) {
+          throw new Error('File not found or access denied');
+        }
+
+        if (!fileInfo) {
+          throw new Error('File not found or access denied');
+        }
+
+        const { GetObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.445.0");
+        const { getSignedUrl } = await import("https://esm.sh/@aws-sdk/s3-request-presigner@3.445.0");
+
+        const getCommand = new GetObjectCommand({
+          Bucket: b2Config.bucket,
+          Key: fileInfo.file_path,
+        });
+
+        const downloadUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });
+
+        return new Response(JSON.stringify({ 
+          url: downloadUrl,
+          filename: fileInfo.name 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'get_usage':
+        // Get storage usage
+        let files, storageLimit;
+        
+        if (profile.company_id) {
+          // Company usage
+          const { data: companyFiles } = await supabaseClient
+            .from('files')
+            .select('file_size')
+            .eq('company_id', profile.company_id);
+          
+          files = companyFiles;
+
+          const { data: company } = await supabaseClient
+            .from('companies')
+            .select('settings')
+            .eq('id', profile.company_id)
+            .single();
+
+          storageLimit = company?.settings?.storage_limit_gb || 10;
+        } else {
+          // Super admin personal usage
+          const { data: personalFiles } = await supabaseClient
+            .from('files')
+            .select('file_size')
+            .eq('uploaded_by', user.id)
+            .is('company_id', null);
+          
+          files = personalFiles;
+          storageLimit = 50; // 50GB for super admin personal files
+        }
+
+        const totalUsage = files?.reduce((sum, file) => sum + file.file_size, 0) || 0;
+        const usageGB = totalUsage / (1024 * 1024 * 1024);
+
+        return new Response(JSON.stringify({
+          totalUsageBytes: totalUsage,
+          totalUsageGB: usageGB,
+          storageLimitGB: storageLimit,
+          usagePercentage: (usageGB / storageLimit) * 100
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
       case 'save_metadata':
         // Save file metadata after successful upload
         const { fileName, filePath, fileSize, fileType, folderId } = payload;
