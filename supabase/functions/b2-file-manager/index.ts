@@ -13,6 +13,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log('🚀 B2 File Manager - Request received:', req.method, req.url);
+  
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -48,6 +50,8 @@ serve(async (req) => {
     }
 
     const { action, ...payload } = await req.json();
+    
+    console.log('📋 Action requested:', action, 'Payload:', payload);
 
     const b2Config = {
       accessKeyId: Deno.env.get('B2_ACCESS_KEY_ID'),
@@ -57,17 +61,10 @@ serve(async (req) => {
       bucket: Deno.env.get('B2_BUCKET_NAME'),
     };
 
-    const { S3Client, DeleteObjectCommand, CopyObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.445.0");
-
-    const s3Client = new S3Client({
-      region: b2Config.region,
-      endpoint: b2Config.endpoint,
-      credentials: {
-        accessKeyId: b2Config.accessKeyId!,
-        secretAccessKey: b2Config.secretAccessKey!,
-      },
-      forcePathStyle: true,
-    });
+    // Verificar se as credenciais estão configuradas
+    if (!b2Config.accessKeyId || !b2Config.secretAccessKey || !b2Config.bucket) {
+      throw new Error('B2 credentials not configured');
+    }
 
     switch (action) {
       case 'list_folders':
@@ -157,8 +154,19 @@ serve(async (req) => {
           throw new Error('File not found or access denied');
         }
 
-        const { GetObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.445.0");
+        // Importar S3 Client quando necessário para download
+        const { S3Client, GetObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.445.0");
         const { getSignedUrl } = await import("https://esm.sh/@aws-sdk/s3-request-presigner@3.445.0");
+
+        const s3Client = new S3Client({
+          region: b2Config.region,
+          endpoint: b2Config.endpoint,
+          credentials: {
+            accessKeyId: b2Config.accessKeyId!,
+            secretAccessKey: b2Config.secretAccessKey!,
+          },
+          forcePathStyle: true,
+        });
 
         const getCommand = new GetObjectCommand({
           Bucket: b2Config.bucket,
@@ -276,6 +284,19 @@ serve(async (req) => {
           throw new Error('File not found or access denied');
         }
 
+        // Importar S3 Client quando necessário para delete
+        const { S3Client, DeleteObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.445.0");
+
+        const s3Client = new S3Client({
+          region: b2Config.region,
+          endpoint: b2Config.endpoint,
+          credentials: {
+            accessKeyId: b2Config.accessKeyId!,
+            secretAccessKey: b2Config.secretAccessKey!,
+          },
+          forcePathStyle: true,
+        });
+
         // Delete from B2
         const deleteCommand = new DeleteObjectCommand({
           Bucket: b2Config.bucket,
@@ -308,50 +329,6 @@ serve(async (req) => {
           });
 
         return new Response(JSON.stringify({ success: true }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-
-      case 'list_usage':
-        // Get storage usage
-        let files, storageLimit;
-        
-        if (profile.company_id) {
-          // Company usage
-          const { data: companyFiles } = await supabaseClient
-            .from('files')
-            .select('file_size')
-            .eq('company_id', profile.company_id);
-          
-          files = companyFiles;
-
-          const { data: company } = await supabaseClient
-            .from('companies')
-            .select('settings')
-            .eq('id', profile.company_id)
-            .single();
-
-          storageLimit = company?.settings?.storage_limit_gb || 10;
-        } else {
-          // Super admin personal usage
-          const { data: personalFiles } = await supabaseClient
-            .from('files')
-            .select('file_size')
-            .eq('uploaded_by', user.id)
-            .is('company_id', null);
-          
-          files = personalFiles;
-          storageLimit = 50; // 50GB for super admin personal files
-        }
-
-        const totalUsage = files?.reduce((sum, file) => sum + file.file_size, 0) || 0;
-        const usageGB = totalUsage / (1024 * 1024 * 1024);
-
-        return new Response(JSON.stringify({
-          totalUsageBytes: totalUsage,
-          totalUsageGB: usageGB,
-          storageLimitGB: storageLimit,
-          usagePercentage: (usageGB / storageLimit) * 100
-        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
