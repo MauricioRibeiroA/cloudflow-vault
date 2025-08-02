@@ -157,6 +157,15 @@ export default function Upload() {
 
   return (
     <div className="space-y-6">
+      {/* Navegação */}
+      {currentFolder && (
+        <div className="flex items-center gap-2 mb-4">
+          <Button variant="outline" onClick={() => setCurrentFolder(null)}>
+            ← Voltar à Raiz
+          </Button>
+        </div>
+      )}
+
       {/* Ações */}
       <div className="flex items-center gap-2 mb-4">
         <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
@@ -241,8 +250,11 @@ export default function Upload() {
                   className="cursor-pointer hover:bg-muted-foreground/5"
                   onClick={() => setCurrentFolder(f.id)}
                 >
-                  <TableCell><Folder className="h-4 w-4" /></TableCell>
-                  <TableCell>{f.name}</TableCell>
+                  <TableCell className="flex items-center gap-2">
+                    <Folder className="h-4 w-4" />
+                    {f.name}
+                  </TableCell>
+                  <TableCell>Pasta</TableCell>
                   <TableCell>—</TableCell>
                   <TableCell>—</TableCell>
                   <TableCell className="text-right">—</TableCell>
@@ -250,12 +262,14 @@ export default function Upload() {
               ))}
               {files.map((file) => (
                 <TableRow key={file.id} className="hover:bg-muted-foreground/5">
-                  <TableCell><FileText className="h-4 w-4" /></TableCell>
-                  <TableCell
-                    className="cursor-pointer text-primary hover:underline"
-                    onClick={() => handleDownload(file)}
-                  >
-                    {file.name}
+                  <TableCell className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span
+                      className="cursor-pointer text-primary hover:underline"
+                      onClick={() => handleDownload(file)}
+                    >
+                      {file.name}
+                    </span>
                   </TableCell>
                   <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
                   <TableCell>{file.type}</TableCell>
