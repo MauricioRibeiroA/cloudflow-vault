@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { B2FileUpload } from '@/components/ui/b2-file-upload'
+import { TestB2Connection } from '@/components/TestB2Connection'
 
 interface B2Folder { id: string; name: string; parent: string | null }
 interface B2File { id: string; name: string; filePath: string; size: number; type: string; createdAt: string }
@@ -59,43 +60,72 @@ export default function Upload() {
   const [loading, setLoading] = useState(false)
 
   const invokeB2 = async (body: Record<string, any>) => {
-    if (!token) {
-      throw new Error('Token de autenticação não encontrado')
-    }
+    try {
+      console.log('🚀 Invoking B2 function with:', body);
+      
+      // Check if user is authenticated and token is valid
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error('❌ Session error:', sessionError);
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
 
-    console.log('🔧 Calling B2 function with:', body)
-    
-    const res = await supabase.functions.invoke('b2-file-manager', {
-      headers: { Authorization: `Bearer ${token}` },
-      body,
-    })
-    
-    console.log('📡 B2 function response:', res)
-    
-    if (res.error) {
-      console.error('❌ B2 function error:', res.error)
-      throw res.error
+      const { data, error } = await supabase.functions.invoke('b2-file-manager', {
+        body
+      });
+      
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        // Try to refresh session if token is invalid
+        if (error.message?.includes('Invalid') || error.message?.includes('expired')) {
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error('❌ Token refresh failed:', refreshError);
+            throw new Error('Sessão expirada. Faça login novamente.');
+          }
+          // Retry the request with refreshed token
+          const { data: retryData, error: retryError } = await supabase.functions.invoke('b2-file-manager', {
+            body
+          });
+          if (retryError) throw retryError;
+          return retryData;
+        }
+        throw error;
+      }
+      
+      console.log('✅ B2 function response:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ invokeB2 error:', error);
+      throw error;
     }
-    return res.data
-  }
+  };
 
   const fetchFolders = async () => {
     try {
-      setLoading(true)
-      const data = await invokeB2({ action: 'list_folders', parentId: currentFolder })
-      setFolders(data.map((f: any) => ({ id: f.id, name: f.name, parent: f.parent_id })))
-    } catch (e: any) {
-      console.error('Error fetching folders:', e)
-      toast({ variant: 'destructive', title: 'Erro ao listar pastas', description: e.message })
+      setLoading(true);
+      console.log('📁 Fetching folders...');
+      const data = await invokeB2({ action: 'list_folders', parentId: currentFolder });
+      console.log('✅ Folders loaded:', data);
+      setFolders(data.map((f: any) => ({ id: f.id, name: f.name, parent: f.parent_id })));
+    } catch (error) {
+      console.error('❌ Error fetching folders:', error);
+      toast({
+        title: "Erro ao listar pastas",
+        description: error.message || "Não foi possível carregar as pastas",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchFiles = async () => {
     try {
-      setLoading(true)
-      const data = await invokeB2({ action: 'list_files', folderId: currentFolder })
+      setLoading(true);
+      console.log('📄 Fetching files for folder:', currentFolder);
+      const data = await invokeB2({ action: 'list_files', folderId: currentFolder });
+      console.log('✅ Files loaded:', data);
       setFiles(data.map((f: any) => ({
         name: f.name,
         filePath: f.file_path,
@@ -103,28 +133,38 @@ export default function Upload() {
         type: f.file_type,
         createdAt: f.created_at,
         id: f.id
-      })))
-    } catch (e: any) {
-      console.error('Error fetching files:', e)
-      toast({ variant: 'destructive', title: 'Erro ao listar arquivos', description: e.message })
+      })));
+    } catch (error) {
+      console.error('❌ Error fetching files:', error);
+      toast({
+        title: "Erro ao listar arquivos",
+        description: error.message || "Não foi possível carregar os arquivos",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchUsage = async () => {
     try {
-      const data = await invokeB2({ action: 'get_usage' })
+      console.log('📊 Fetching storage usage...');
+      const data = await invokeB2({ action: 'get_usage' });
+      console.log('✅ Usage loaded:', data);
       setUsage({ 
         usedGB: data.totalUsageGB, 
         limitGB: data.storageLimitGB, 
         pct: data.usagePercentage 
-      })
-    } catch (e: any) {
-      console.error('Error fetching usage:', e)
-      // Não mostra toast para erro de usage - é opcional
+      });
+    } catch (error) {
+      console.error('❌ Error fetching usage:', error);
+      toast({
+        title: "Erro ao carregar uso de armazenamento",
+        description: error.message || "Não foi possível obter informações de uso",
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
@@ -201,6 +241,9 @@ export default function Upload() {
           <h1 className="text-2xl font-bold">Upload de Arquivos B2</h1>
         </div>
       </div>
+
+      {/* Test B2 Connection */}
+      <TestB2Connection />
 
       {/* Navegação */}
       {currentFolder && (
