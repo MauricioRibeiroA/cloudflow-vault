@@ -184,7 +184,7 @@ serve(async (req) => {
 
       case 'get_usage':
         // Get storage usage
-        let files, storageLimit;
+        let usageFiles, storageLimit;
         
         if (profile.company_id) {
           // Company usage
@@ -193,7 +193,7 @@ serve(async (req) => {
             .select('file_size')
             .eq('company_id', profile.company_id);
           
-          files = companyFiles;
+          usageFiles = companyFiles;
 
           const { data: company } = await supabaseClient
             .from('companies')
@@ -210,11 +210,11 @@ serve(async (req) => {
             .eq('uploaded_by', user.id)
             .is('company_id', null);
           
-          files = personalFiles;
+          usageFiles = personalFiles;
           storageLimit = 50; // 50GB for super admin personal files
         }
 
-        const totalUsage = files?.reduce((sum, file) => sum + file.file_size, 0) || 0;
+        const totalUsage = usageFiles?.reduce((sum, file) => sum + file.file_size, 0) || 0;
         const usageGB = totalUsage / (1024 * 1024 * 1024);
 
         return new Response(JSON.stringify({
@@ -265,13 +265,13 @@ serve(async (req) => {
         });
 
       case 'delete':
-        const { fileId } = payload;
+        const { fileId: deleteFileId } = payload;
         
         // Get file info and verify access
         const { data: fileToDelete } = await supabaseClient
           .from('files')
           .select('file_path, name, company_id, uploaded_by')
-          .eq('id', fileId)
+          .eq('id', deleteFileId)
           .single();
 
         // Verify access: same company or super admin can delete their own files
@@ -285,9 +285,9 @@ serve(async (req) => {
         }
 
         // Importar S3 Client quando necessário para delete
-        const { S3Client, DeleteObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.445.0");
+        const { S3Client: S3DeleteClient, DeleteObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.445.0");
 
-        const s3Client = new S3Client({
+        const s3DeleteClient = new S3DeleteClient({
           region: b2Config.region,
           endpoint: b2Config.endpoint,
           credentials: {
@@ -303,13 +303,13 @@ serve(async (req) => {
           Key: fileToDelete.file_path,
         });
 
-        await s3Client.send(deleteCommand);
+        await s3DeleteClient.send(deleteCommand);
 
         // Delete from database
         const { error: deleteError } = await supabaseClient
           .from('files')
           .delete()
-          .eq('id', fileId);
+          .eq('id', deleteFileId);
 
         if (deleteError) throw deleteError;
 
