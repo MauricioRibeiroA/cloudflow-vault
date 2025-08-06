@@ -630,6 +630,151 @@ serve(async (req) => {
           });
         }
       }
+
+      // CREATE COMPANY STRUCTURE - Cria estrutura completa de pastas para nova empresa
+      if (body.action === 'createCompanyStructure') {
+        console.log('Creating company structure:', body.companyId);
+        
+        if (!body.companyId) {
+          return new Response(JSON.stringify({
+            error: 'companyId is required for createCompanyStructure operation'
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const companyId = body.companyId;
+        const basePath = `cloud-vault/company-${companyId}/`;
+        
+        // Definir estrutura de pastas
+        const foldersToCreate = [
+          `${basePath}users/`,
+          `${basePath}shared/`,
+          `${basePath}shared/documents/`,
+          `${basePath}shared/projects/`,
+          `${basePath}shared/templates/`,
+          `${basePath}admin/`
+        ];
+
+        console.log('Creating folders:', foldersToCreate);
+        
+        const createdFolders = [];
+        const errors = [];
+        
+        // Criar cada pasta sequencialmente para evitar problemas de concorrência
+        for (const folderPath of foldersToCreate) {
+          try {
+            const markerPath = folderPath + 'folder_marker(2)';
+            const markerContent = new TextEncoder().encode('folder_marker(2)');
+            
+            const markerCommand = new PutObjectCommand({
+              Bucket: b2Config.bucket,
+              Key: markerPath,
+              Body: markerContent,
+              ContentType: 'application/x-directory',
+              Metadata: {
+                'company-id': companyId,
+                'created-at': new Date().toISOString(),
+                'folder-type': 'company-structure'
+              }
+            });
+
+            await s3Client.send(markerCommand);
+            createdFolders.push({
+              path: folderPath,
+              marker: markerPath,
+              success: true
+            });
+            console.log('✅ Created folder:', folderPath);
+            
+          } catch (error) {
+            console.error('❌ Failed to create folder:', folderPath, error);
+            errors.push({
+              path: folderPath,
+              error: error.message
+            });
+          }
+        }
+        
+        const success = errors.length === 0;
+        
+        return new Response(JSON.stringify({
+          success: success,
+          message: success 
+            ? `Company structure created successfully for ${companyId}` 
+            : `Company structure created with ${errors.length} errors`,
+          companyId: companyId,
+          createdFolders: createdFolders,
+          errors: errors,
+          totalCreated: createdFolders.length,
+          totalErrors: errors.length
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: success ? 200 : 207 // 207 Multi-Status para parcial sucesso
+        });
+      }
+
+      // CREATE USER PERSONAL FOLDER - Cria pasta pessoal para novo usuário
+      if (body.action === 'createUserPersonalFolder') {
+        console.log('Creating user personal folder:', body.userId, 'for company:', body.companyId);
+        
+        if (!body.userId || !body.companyId) {
+          return new Response(JSON.stringify({
+            error: 'userId and companyId are required for createUserPersonalFolder operation'
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const userFolderPath = `cloud-vault/company-${body.companyId}/users/user-${body.userId}/`;
+        const markerPath = userFolderPath + 'folder_marker(2)';
+        
+        try {
+          const markerContent = new TextEncoder().encode('folder_marker(2)');
+          const markerCommand = new PutObjectCommand({
+            Bucket: b2Config.bucket,
+            Key: markerPath,
+            Body: markerContent,
+            ContentType: 'application/x-directory',
+            Metadata: {
+              'user-id': body.userId,
+              'company-id': body.companyId,
+              'created-at': new Date().toISOString(),
+              'folder-type': 'user-personal'
+            }
+          });
+
+          await s3Client.send(markerCommand);
+          console.log('✅ Created user personal folder:', userFolderPath);
+          
+          return new Response(JSON.stringify({
+            success: true,
+            message: 'User personal folder created successfully',
+            userId: body.userId,
+            companyId: body.companyId,
+            folderPath: userFolderPath,
+            markerFile: markerPath
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200
+          });
+          
+        } catch (error) {
+          console.error('❌ Failed to create user personal folder:', error);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to create user personal folder',
+            details: error.message,
+            userId: body.userId,
+            companyId: body.companyId
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
     }
 
     return new Response(JSON.stringify({ 

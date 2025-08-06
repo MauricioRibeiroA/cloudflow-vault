@@ -25,6 +25,7 @@ import Settings from './pages/Settings'
 import Companies from './pages/Companies'
 import Plans from './components/Plans'
 import SuperAdminDashboard from './components/SuperAdminDashboard'
+import SecureFiles from './pages/SecureFiles'
 import NotFound from './pages/NotFound'
 
 const queryClient = new QueryClient()
@@ -180,6 +181,17 @@ export default function App() {
                   <ProtectedRoute requiredGroups={['super_admin']}>
                     <AppLayout>
                       <SuperAdminDashboard />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/secure-files"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <SecureFiles />
                     </AppLayout>
                   </ProtectedRoute>
                 }
