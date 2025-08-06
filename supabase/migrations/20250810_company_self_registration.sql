@@ -32,25 +32,25 @@ CREATE OR REPLACE FUNCTION register_company_with_trial(
     -- Dados da empresa
     p_company_name VARCHAR(255),
     p_cnpj VARCHAR(18),
-    p_razao_social VARCHAR(255),
-    p_inscricao_estadual VARCHAR(20),
-    p_setor VARCHAR(100),
-    p_porte VARCHAR(20),
-    p_cep VARCHAR(10),
-    p_logradouro VARCHAR(255),
-    p_numero VARCHAR(10),
-    p_complemento VARCHAR(100),
-    p_bairro VARCHAR(100),
-    p_cidade VARCHAR(100),
-    p_estado VARCHAR(2),
-    p_telefone_empresa VARCHAR(20),
+    p_razao_social VARCHAR(255) DEFAULT NULL,
+    p_inscricao_estadual VARCHAR(20) DEFAULT NULL,
+    p_setor VARCHAR(100) DEFAULT NULL,
+    p_porte VARCHAR(20) DEFAULT 'MICRO',
+    p_cep VARCHAR(10) DEFAULT NULL,
+    p_logradouro VARCHAR(255) DEFAULT NULL,
+    p_numero VARCHAR(10) DEFAULT NULL,
+    p_complemento VARCHAR(100) DEFAULT NULL,
+    p_bairro VARCHAR(100) DEFAULT NULL,
+    p_cidade VARCHAR(100) DEFAULT NULL,
+    p_estado VARCHAR(2) DEFAULT NULL,
+    p_telefone_empresa VARCHAR(20) DEFAULT NULL,
     
     -- Dados do admin
-    p_admin_name VARCHAR(255),
-    p_admin_email VARCHAR(255),
-    p_admin_cpf VARCHAR(14),
-    p_admin_telefone VARCHAR(20),
-    p_admin_cargo VARCHAR(100)
+    p_admin_name VARCHAR(255) DEFAULT NULL,
+    p_admin_email VARCHAR(255) DEFAULT NULL,
+    p_admin_cpf VARCHAR(14) DEFAULT NULL,
+    p_admin_telefone VARCHAR(20) DEFAULT NULL,
+    p_admin_cargo VARCHAR(100) DEFAULT NULL
 )
 RETURNS JSON AS $$
 DECLARE
@@ -60,17 +60,17 @@ DECLARE
     result JSON;
 BEGIN
     -- Verificar se CNPJ já existe
-    IF EXISTS (SELECT 1 FROM public.companies WHERE cnpj = p_cnpj) THEN
+    IF p_cnpj IS NOT NULL AND EXISTS (SELECT 1 FROM public.companies WHERE cnpj = p_cnpj) THEN
         RETURN json_build_object('success', false, 'error', 'CNPJ já cadastrado no sistema');
     END IF;
     
     -- Verificar se email já existe
-    IF EXISTS (SELECT 1 FROM auth.users WHERE email = p_admin_email) THEN
+    IF p_admin_email IS NOT NULL AND EXISTS (SELECT 1 FROM auth.users WHERE email = p_admin_email) THEN
         RETURN json_build_object('success', false, 'error', 'E-mail já cadastrado no sistema');
     END IF;
     
     -- Verificar se CPF já existe
-    IF EXISTS (SELECT 1 FROM public.profiles WHERE cpf = p_admin_cpf) THEN
+    IF p_admin_cpf IS NOT NULL AND EXISTS (SELECT 1 FROM public.profiles WHERE cpf = p_admin_cpf) THEN
         RETURN json_build_object('success', false, 'error', 'CPF já cadastrado no sistema');
     END IF;
     
@@ -82,7 +82,7 @@ BEGIN
         current_storage_used_bytes, current_download_used_bytes,
         active_users_count
     ) VALUES (
-        p_company_name, p_cnpj, p_razao_social, p_inscricao_estadual, p_setor, p_porte,
+        p_company_name, p_cnpj, COALESCE(p_razao_social, p_company_name), p_inscricao_estadual, p_setor, p_porte,
         p_cep, p_logradouro, p_numero, p_complemento, p_bairro, p_cidade, p_estado, p_telefone_empresa,
         true, 'trial_signup',
         0, 0, 1
