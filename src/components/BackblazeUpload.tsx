@@ -169,22 +169,39 @@ const BackblazeUpload: React.FC = () => {
   };
 
   const handleDelete = async (file: B2File) => {
-    if (!confirm(`Tem certeza que deseja deletar "${file.name}"?`)) return;
+    const itemType = file.isFolder ? 'pasta' : 'arquivo';
+    const confirmMessage = file.isFolder 
+      ? `Tem certeza que deseja deletar a pasta "${file.name}" e TODO o seu conteúdo? Esta ação não pode ser desfeita.`
+      : `Tem certeza que deseja deletar "${file.name}"?`;
+      
+    if (!confirm(confirmMessage)) return;
 
     setLoading(true);
     try {
-      await backblazeService.deleteFile(file.key);
+      console.log(`🗑️ Deletando ${itemType}:`, file.name, 'isFolder:', file.isFolder);
+      
+      if (file.isFolder) {
+        // Para pastas: usar deleteFolder com path relativo
+        const folderPath = file.path || file.name;
+        console.log('🗑️ Chamando deleteFolder com path:', folderPath);
+        await backblazeService.deleteFolder(folderPath);
+      } else {
+        // Para arquivos: usar deleteFile normal
+        console.log('🗑️ Chamando deleteFile com key:', file.key);
+        await backblazeService.deleteFile(file.key);
+      }
       
       toast({
-        title: "✅ Arquivo deletado",
-        description: `${file.name} foi removido`,
+        title: `✅ ${itemType.charAt(0).toUpperCase() + itemType.slice(1)} deletado`,
+        description: `${file.name} foi removido${file.isFolder ? ' com todo o conteúdo' : ''}`,
       });
       
       await loadFiles();
     } catch (error) {
+      console.error(`Erro ao deletar ${itemType}:`, error);
       toast({
         title: "Erro",
-        description: "Falha ao deletar arquivo",
+        description: `Falha ao deletar ${itemType}`,
         variant: "destructive",
       });
     } finally {
