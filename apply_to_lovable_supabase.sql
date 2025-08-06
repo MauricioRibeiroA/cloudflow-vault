@@ -267,8 +267,29 @@ CREATE INDEX IF NOT EXISTS idx_profiles_company_founder ON public.profiles(is_co
 -- CONSTRAINTS ÚNICAS
 -- =====================================================
 
-ALTER TABLE public.companies ADD CONSTRAINT IF NOT EXISTS unique_cnpj UNIQUE (cnpj);
-ALTER TABLE public.profiles ADD CONSTRAINT IF NOT EXISTS unique_cpf UNIQUE (cpf);
+-- Adicionar constraint CNPJ único (se não existir)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'unique_cnpj' 
+        AND table_name = 'companies'
+    ) THEN
+        ALTER TABLE public.companies ADD CONSTRAINT unique_cnpj UNIQUE (cnpj);
+    END IF;
+END $$;
+
+-- Adicionar constraint CPF único (se não existir)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'unique_cpf' 
+        AND table_name = 'profiles'
+    ) THEN
+        ALTER TABLE public.profiles ADD CONSTRAINT unique_cpf UNIQUE (cpf);
+    END IF;
+END $$;
 
 -- =====================================================
 -- COMENTÁRIOS PARA DOCUMENTAÇÃO
