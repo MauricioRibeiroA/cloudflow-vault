@@ -15,7 +15,8 @@ import {
   Cloud,
   CreditCard,
   Crown,
-  FolderLock
+  FolderLock,
+  Timer
 } from "lucide-react";
 import {
   Sidebar,
@@ -61,6 +62,12 @@ const menuItems: MenuItem[] = [
     title: "Planos",
     url: "/plans",
     icon: CreditCard,
+  },
+  {
+    title: "Trial Gratuito",
+    url: "/trial",
+    icon: Timer,
+    requiredGroups: ["company_admin"],
   },
   {
     title: "Arquivos Seguros",

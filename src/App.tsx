@@ -27,6 +27,7 @@ import Plans from './components/Plans'
 import SuperAdminDashboard from './components/SuperAdminDashboard'
 import SecureFiles from './pages/SecureFiles'
 import HierarchicalDemo from './pages/HierarchicalDemo'
+import Trial from './pages/Trial'
 import NotFound from './pages/NotFound'
 
 const queryClient = new QueryClient()
@@ -204,6 +205,17 @@ export default function App() {
                   <ProtectedRoute>
                     <AppLayout>
                       <HierarchicalDemo />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/trial"
+                element={
+                  <ProtectedRoute requiredGroups={['company_admin']}>
+                    <AppLayout>
+                      <Trial />
                     </AppLayout>
                   </ProtectedRoute>
                 }
