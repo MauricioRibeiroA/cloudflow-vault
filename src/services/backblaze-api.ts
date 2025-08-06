@@ -124,6 +124,9 @@ class BackblazeAPIService {
 
       if (error) throw error;
 
+      // Obtém o usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      
       // Salva metadados na tabela files
       const { error: dbError } = await supabase
         .from('files')
@@ -132,7 +135,8 @@ class BackblazeAPIService {
           file_path: data.path,
           file_size: file.size,
           file_type: file.type,
-          folder_id: null, // TODO: implementar lógica de pastas
+          folder_id: null,
+          uploaded_by: user?.id || ''
         });
 
       if (dbError) throw dbError;
@@ -199,11 +203,15 @@ class BackblazeAPIService {
         parentId = parentFolder?.id || null;
       }
 
+      // Obtém o usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { error } = await supabase
         .from('folders')
         .insert({
           name: folderName,
           parent_id: parentId,
+          created_by: user?.id || ''
         });
 
       if (error) throw error;

@@ -21,6 +21,7 @@ interface SimpleFile {
   id: string
   name: string
   size: number
+  file_size: number
   file_type: string
   created_at: string
   folder_id: string | null
@@ -106,7 +107,12 @@ export default function SimpleUpload() {
       }
 
       console.log('Arquivos encontrados:', data)
-      setFiles(data || [])
+      // Map para converter file_size para size
+      const mappedFiles = (data || []).map(file => ({
+        ...file,
+        size: file.file_size
+      }))
+      setFiles(mappedFiles)
     } catch (error: any) {
       console.error('Erro na busca de arquivos:', error)
       toast({
