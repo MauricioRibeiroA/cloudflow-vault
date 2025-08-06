@@ -28,6 +28,7 @@ import SuperAdminDashboard from './components/SuperAdminDashboard'
 import SecureFiles from './pages/SecureFiles'
 import HierarchicalDemo from './pages/HierarchicalDemo'
 import Trial from './pages/Trial'
+import CompanySignup from './pages/CompanySignup'
 import NotFound from './pages/NotFound'
 
 const queryClient = new QueryClient()
@@ -44,6 +45,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/signup/company" element={<CompanySignup />} />
 
               <Route
                 path="/dashboard"
