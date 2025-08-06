@@ -13,7 +13,8 @@ import {
   Cog,
   Building2,
   Cloud,
-  CreditCard
+  CreditCard,
+  Crown
 } from "lucide-react";
 import {
   Sidebar,
@@ -70,6 +71,12 @@ const menuItems: MenuItem[] = [
     title: "Empresas",
     url: "/companies",
     icon: Building2,
+    requiredGroups: ["super_admin"],
+  },
+  {
+    title: "Super Admin Dashboard",
+    url: "/super-admin",
+    icon: Crown,
     requiredGroups: ["super_admin"],
   },
   {
