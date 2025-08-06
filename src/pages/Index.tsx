@@ -226,10 +226,10 @@ export default function Index() {
             <Button
               size="lg"
               variant="gradient"
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/signup/company')}
               className="text-lg px-8"
             >
-              Começar Agora
+              🎉 Trial Gratuito 7 Dias
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button
@@ -274,6 +274,66 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Trial Section */}
+      <section className="py-20 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border-2 border-blue-200 dark:border-blue-800">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-full text-sm font-medium mb-6">
+              🎉 Oferta Especial
+            </div>
+            
+            <h2 className="text-4xl font-bold text-foreground mb-4">
+              Teste Gratuito por 7 Dias
+            </h2>
+            
+            <p className="text-xl text-muted-foreground mb-8">
+              Experimente todas as funcionalidades do CloudFlow Vault sem compromisso. 
+              Cadastre sua empresa agora e comece a usar imediatamente!
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <HardDrive className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="font-semibold mb-2">50GB Grátis</h3>
+                <p className="text-sm text-muted-foreground">Armazenamento completo durante o trial</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Users className="h-8 w-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="font-semibold mb-2">2 Usuários</h3>
+                <p className="text-sm text-muted-foreground">Convide sua equipe para testar</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Zap className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h3 className="font-semibold mb-2">Acesso Total</h3>
+                <p className="text-sm text-muted-foreground">Todas as funcionalidades incluídas</p>
+              </div>
+            </div>
+            
+            <Button 
+              size="lg" 
+              variant="gradient" 
+              onClick={() => navigate('/signup/company')}
+              className="text-lg px-8 py-3"
+            >
+              🚀 Começar Trial Gratuito Agora
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            
+            <p className="text-sm text-muted-foreground mt-4">
+              ⏱️ Ativação imediata • 💳 Sem cartão de crédito • ❌ Sem compromisso
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Section */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
@@ -282,7 +342,7 @@ export default function Index() {
               Planos que Crescem com Sua Empresa
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Escolha o plano ideal para suas necessidades. Todos incluem suporte técnico e atualizações gratuitas.
+              Após o trial, escolha o plano ideal para suas necessidades. Todos incluem suporte técnico e atualizações gratuitas.
             </p>
           </div>
 
@@ -352,9 +412,9 @@ export default function Index() {
                     <Button 
                       className="w-full mt-8"
                       variant={index === 1 ? "gradient" : "outline"}
-                      onClick={() => navigate('/auth')}
+                      onClick={() => navigate('/signup/company')}
                     >
-                      Começar Agora
+                      Começar Trial Gratuito
                       <CreditCard className="ml-2 h-4 w-4" />
                     </Button>
                   </CardContent>
@@ -378,10 +438,10 @@ export default function Index() {
             <Button
               size="lg"
               variant="secondary"
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/signup/company')}
               className="text-lg px-8"
             >
-              Começar Teste Gratuito
+              Começar Trial Gratuito 7 Dias
               <Zap className="ml-2 h-5 w-5" />
             </Button>
           </div>
