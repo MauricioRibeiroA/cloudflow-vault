@@ -242,8 +242,23 @@ const CompanySignup: React.FC = () => {
       setLoading(true);
       setError('');
 
-      // 1. Registrar empresa no banco
-      const { data: registrationResult, error: registrationError } = await supabase.rpc('register_company_with_trial', {
+      // VALIDAÇÃO PRÉVIA: Verificar se email já é admin de alguma empresa
+      const { data: adminCheck, error: adminCheckError } = await supabase.rpc('check_user_company_admin_status', {
+        p_email: formData.adminEmail
+      });
+
+      if (adminCheckError) {
+        setError('Erro ao verificar dados do usuário');
+        return;
+      }
+
+      if (adminCheck?.is_company_admin) {
+        setError(`⚠️ ${adminCheck.message}. Não é possível criar outra empresa com este email.`);
+        return;
+      }
+
+      // 1. Registrar empresa no banco com função segura
+      const { data: registrationResult, error: registrationError } = await supabase.rpc('register_company_with_trial_secure', {
         p_company_name: formData.companyName,
         p_cnpj: formData.cnpj,
         p_razao_social: formData.razaoSocial || formData.companyName,
@@ -294,8 +309,8 @@ const CompanySignup: React.FC = () => {
       }
 
       if (authData.user) {
-        // 3. Finalizar registro do perfil
-        const { data: completionResult, error: completionError } = await supabase.rpc('complete_company_registration', {
+        // 3. Finalizar registro do perfil com função segura
+        const { data: completionResult, error: completionError } = await supabase.rpc('complete_company_registration_secure', {
           p_company_id: registrationResult.company_id,
           p_user_id: authData.user.id,
           p_admin_name: formData.adminName,
@@ -309,12 +324,23 @@ const CompanySignup: React.FC = () => {
           return;
         }
 
-        setSuccess('🎉 Empresa cadastrada com sucesso! Trial de 7 dias ativado!');
+        if (!completionResult?.success) {
+          setError(completionResult?.error || 'Erro ao finalizar cadastro');
+          return;
+        }
+
+        // Verificar se o usuário foi criado como company_admin
+        if (completionResult?.role_type === 'company_admin') {
+          setSuccess('🎉 Empresa cadastrada com sucesso! Você é agora o administrador da empresa. Trial de 7 dias ativado!');
+        } else {
+          setError('⚠️ Erro: Usuário não foi criado como administrador. Contate o suporte.');
+          return;
+        }
         
-        // Redirecionar para dashboard após 2 segundos
+        // Redirecionar para dashboard após 3 segundos
         setTimeout(() => {
           navigate('/dashboard');
-        }, 2000);
+        }, 3000);
       }
 
     } catch (err: any) {
