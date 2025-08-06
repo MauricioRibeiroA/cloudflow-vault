@@ -236,9 +236,9 @@ serve(async (req) => {
         });
       }
 
-      // DELETE - Delete file or folder
+      // DELETE - Delete file only (single object)
       if (body.action === 'delete') {
-        console.log('Deleting file/folder:', body.key);
+        console.log('Deleting file:', body.key);
         
         if (!body.key) {
           return new Response(JSON.stringify({
@@ -258,16 +258,118 @@ serve(async (req) => {
         });
 
         await s3Client.send(command);
-        console.log('File/folder deleted successfully:', keyToDelete);
+        console.log('File deleted successfully:', keyToDelete);
 
         return new Response(JSON.stringify({
           success: true,
-          message: 'File/folder deleted successfully',
+          message: 'File deleted successfully',
           deletedKey: keyToDelete
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200
         });
+      }
+
+      // DELETE FOLDER - Delete folder recursively (all contents)
+      if (body.action === 'deleteFolder') {
+        console.log('Deleting folder recursively:', body.folderPath);
+        
+        if (!body.folderPath) {
+          return new Response(JSON.stringify({
+            error: 'folderPath is required for deleteFolder operation'
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Ensure folder path has proper prefix and ends with '/'
+        let folderPath = body.folderPath;
+        if (!folderPath.startsWith('cloud-vault/')) {
+          folderPath = `cloud-vault/${folderPath}`;
+        }
+        if (!folderPath.endsWith('/')) {
+          folderPath += '/';
+        }
+        
+        console.log('Folder path normalized:', folderPath);
+        
+        try {
+          // Step 1: List all objects in the folder (recursively)
+          const listCommand = new ListObjectsV2Command({
+            Bucket: b2Config.bucket,
+            Prefix: folderPath,
+            // No delimiter - get ALL objects under this prefix
+          });
+
+          const listResponse = await s3Client.send(listCommand);
+          const objectsToDelete = listResponse.Contents || [];
+          
+          console.log(`Found ${objectsToDelete.length} objects to delete in folder:`, folderPath);
+          
+          if (objectsToDelete.length === 0) {
+            return new Response(JSON.stringify({
+              success: true,
+              message: 'Folder was already empty or does not exist',
+              folderPath: folderPath,
+              deletedObjects: []
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200
+            });
+          }
+
+          // Step 2: Delete all objects in parallel (limited batches for safety)
+          const deletePromises = [];
+          const deletedKeys = [];
+          
+          for (const object of objectsToDelete) {
+            if (object.Key) {
+              console.log('Deleting object:', object.Key);
+              const deleteCommand = new DeleteObjectCommand({
+                Bucket: b2Config.bucket,
+                Key: object.Key,
+              });
+              
+              deletePromises.push(
+                s3Client.send(deleteCommand).then(() => {
+                  deletedKeys.push(object.Key!);
+                  console.log('✅ Deleted:', object.Key);
+                }).catch((error) => {
+                  console.error('❌ Failed to delete:', object.Key, error);
+                  throw error;
+                })
+              );
+            }
+          }
+
+          // Wait for all deletions to complete
+          await Promise.all(deletePromises);
+          
+          console.log(`Successfully deleted folder with ${deletedKeys.length} objects:`, folderPath);
+
+          return new Response(JSON.stringify({
+            success: true,
+            message: `Folder deleted successfully with ${deletedKeys.length} objects`,
+            folderPath: folderPath,
+            deletedObjects: deletedKeys,
+            totalDeleted: deletedKeys.length
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200
+          });
+
+        } catch (error) {
+          console.error('Error deleting folder:', error);
+          return new Response(JSON.stringify({
+            error: 'Failed to delete folder',
+            details: error.message,
+            folderPath: folderPath
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
 
       // DOWNLOAD - Serve file directly to avoid CORS issues

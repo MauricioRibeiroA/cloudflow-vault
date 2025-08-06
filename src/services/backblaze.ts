@@ -390,10 +390,10 @@ const createFolderViaEdge = async (path: string, folderName: string) => {
 };
 
 const deleteFolderViaEdge = async (folderPath: string) => {
-  console.log('📁 Deletando pasta via Edge Function:', folderPath);
+  console.log('📁 Deletando pasta recursivamente via Edge Function:', folderPath);
   return useEdgeFunction('b2-proxy', { 
-    action: 'delete',
-    key: folderPath
+    action: 'deleteFolder',
+    folderPath: folderPath
   });
 };
 
