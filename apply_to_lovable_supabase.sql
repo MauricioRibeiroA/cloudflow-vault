@@ -69,10 +69,8 @@ BEGIN
         RETURN json_build_object('success', false, 'error', 'CNPJ já cadastrado no sistema');
     END IF;
     
-    -- Verificar se email já existe
-    IF p_admin_email IS NOT NULL AND EXISTS (SELECT 1 FROM auth.users WHERE email = p_admin_email) THEN
-        RETURN json_build_object('success', false, 'error', 'E-mail já cadastrado no sistema');
-    END IF;
+    -- Verificar se email já existe (verificação será feita no frontend via Supabase Auth)
+    -- A tabela auth.users não é acessível diretamente por funções SQL devido a restrições de segurança
     
     -- Verificar se CPF já existe
     IF p_admin_cpf IS NOT NULL AND EXISTS (SELECT 1 FROM public.profiles WHERE cpf = p_admin_cpf) THEN
@@ -99,22 +97,24 @@ BEGIN
     -- 3. Iniciar trial automaticamente
     SELECT start_free_trial(new_company_id) INTO trial_result;
     
-    -- 4. Log da ação
-    INSERT INTO user_action_logs (
-        company_id, 
-        action_type, 
-        details
-    ) VALUES (
-        new_company_id,
-        'company_self_registration',
-        json_build_object(
-            'company_name', p_company_name,
-            'cnpj', p_cnpj,
-            'admin_email', p_admin_email,
-            'registration_source', 'trial_signup',
-            'trial_started', trial_result
-        )
-    );
+    -- 4. Log da ação (apenas se tabela user_action_logs existir)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_action_logs' AND table_schema = 'public') THEN
+        INSERT INTO user_action_logs (
+            company_id, 
+            action_type, 
+            details
+        ) VALUES (
+            new_company_id,
+            'company_self_registration',
+            json_build_object(
+                'company_name', p_company_name,
+                'cnpj', p_cnpj,
+                'admin_email', p_admin_email,
+                'registration_source', 'trial_signup',
+                'trial_started', trial_result
+            )
+        );
+    END IF;
     
     result := json_build_object(
         'success', true,
@@ -161,17 +161,19 @@ BEGIN
     SET active_users_count = 1
     WHERE id = p_company_id;
     
-    -- Log da finalização
-    INSERT INTO user_action_logs (
-        company_id, user_id, action_type, details
-    ) VALUES (
-        p_company_id, p_user_id, 'admin_profile_created',
-        json_build_object(
-            'admin_name', p_admin_name,
-            'is_company_founder', true,
-            'registration_completed', true
-        )
-    );
+    -- Log da finalização (apenas se tabela user_action_logs existir)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_action_logs' AND table_schema = 'public') THEN
+        INSERT INTO user_action_logs (
+            company_id, user_id, action_type, details
+        ) VALUES (
+            p_company_id, p_user_id, 'admin_profile_created',
+            json_build_object(
+                'admin_name', p_admin_name,
+                'is_company_founder', true,
+                'registration_completed', true
+            )
+        );
+    END IF;
     
     RETURN json_build_object(
         'success', true,
