@@ -27,6 +27,11 @@ serve(async (req) => {
       endpoint: Deno.env.get('B2_ENDPOINT') || 'https://s3.us-east-005.backblazeb2.com',
       bucket: Deno.env.get('B2_BUCKET_NAME') || 'cloud-clients-cloudflow',
     };
+    
+    // Garantir que o endpoint tenha o protocolo https://
+    if (b2Config.endpoint && !b2Config.endpoint.startsWith('http')) {
+      b2Config.endpoint = `https://${b2Config.endpoint}`;
+    }
 
     console.log('B2 Config check:', {
       hasAccessKey: !!b2Config.accessKeyId,
