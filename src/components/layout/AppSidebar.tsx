@@ -12,7 +12,8 @@ import {
   Upload,
   Cog,
   Building2,
-  Cloud
+  Cloud,
+  CreditCard
 } from "lucide-react";
 import {
   Sidebar,
@@ -53,6 +54,11 @@ const menuItems: MenuItem[] = [
     title: "Backblaze B2",
     url: "/backblaze-b2",
     icon: Cloud,
+  },
+  {
+    title: "Planos",
+    url: "/plans",
+    icon: CreditCard,
   },
   {
     title: "Colaboradores",

@@ -23,6 +23,7 @@ import Logs from './pages/Logs'
 import Backup from './pages/Backup'
 import Settings from './pages/Settings'
 import Companies from './pages/Companies'
+import Plans from './components/Plans'
 import NotFound from './pages/NotFound'
 
 const queryClient = new QueryClient()
@@ -156,6 +157,17 @@ export default function App() {
                   <ProtectedRoute requiredGroups={['super_admin']}>
                     <AppLayout>
                       <Companies />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/plans"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Plans />
                     </AppLayout>
                   </ProtectedRoute>
                 }
