@@ -116,7 +116,7 @@ serve(async (req) => {
 
     queryParams.set("X-Amz-Signature", signature);
 
-    const signedUrl = `${endpoint}/${bucket}/${key}?${queryParams.toString()}`;
+    const signedUrl = `${endpoint}/${key}?${queryParams.toString()}`;
 
     return new Response(JSON.stringify({
       signedUrl,
