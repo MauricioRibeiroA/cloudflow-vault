@@ -290,6 +290,8 @@ const CompanySignup: React.FC = () => {
         return;
       }
 
+      console.log('🎯 Empresa criada com sucesso:', registrationResult);
+
       // 2. Criar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
@@ -303,12 +305,37 @@ const CompanySignup: React.FC = () => {
         }
       });
 
+      console.log('🔐 Auth signup result:', { authData, authError });
+
       if (authError) {
-        setError(`Erro ao criar conta: ${authError.message}`);
-        return;
+        // Verificar se o erro é porque o usuário já existe
+        if (authError.message.includes('already') || authError.message.includes('exist')) {
+          console.log('⚠️ Usuário já existe, tentando fazer login...');
+          // Tentar fazer login em vez de criar
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email: formData.adminEmail,
+            password: formData.adminPassword
+          });
+          
+          if (loginError) {
+            setError(`Email já existe mas senha incorreta. Use "Esqueci minha senha" ou tente outro email.`);
+            return;
+          }
+          
+          if (loginData.user) {
+            console.log('✅ Login successful, using existing user:', loginData.user.id);
+            // Usar o usuário existente
+            authData.user = loginData.user;
+          }
+        } else {
+          setError(`Erro ao criar conta: ${authError.message}`);
+          return;
+        }
       }
 
-      if (authData.user) {
+      if (authData?.user) {
+        console.log('👤 Usuário autenticado:', authData.user.id);
+        
         // 3. Finalizar registro do perfil com função segura
         const { data: completionResult, error: completionError } = await supabase.rpc('complete_company_registration_secure', {
           p_company_id: registrationResult.company_id,
@@ -319,28 +346,38 @@ const CompanySignup: React.FC = () => {
           p_admin_cargo: formData.adminCargo
         });
 
+        console.log('📋 Profile creation result:', { completionResult, completionError });
+
         if (completionError) {
           setError(`Erro ao finalizar cadastro: ${completionError.message}`);
           return;
         }
 
         if (!completionResult?.success) {
+          console.error('❌ Profile creation failed:', completionResult);
           setError(completionResult?.error || 'Erro ao finalizar cadastro');
           return;
         }
 
+        console.log('✅ Profile created successfully:', completionResult);
+
         // Verificar se o usuário foi criado como company_admin
         if (completionResult?.role_type === 'company_admin') {
           setSuccess('🎉 Empresa cadastrada com sucesso! Você é agora o administrador da empresa. Trial de 7 dias ativado!');
+          
+          // Redirecionar para dashboard após 3 segundos
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 3000);
         } else {
-          setError('⚠️ Erro: Usuário não foi criado como administrador. Contate o suporte.');
+          console.warn('⚠️ Role incorreto:', completionResult?.role_type);
+          setError(`⚠️ Erro: Usuário foi criado como "${completionResult?.role_type}" em vez de "company_admin". As funções de segurança podem não ter sido aplicadas ao banco de dados.`);
           return;
         }
-        
-        // Redirecionar para dashboard após 3 segundos
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 3000);
+      } else {
+        console.error('❌ Nenhum usuário retornado da autenticação');
+        setError('Erro: Falha na criação do usuário');
+        return;
       }
 
     } catch (err: any) {
