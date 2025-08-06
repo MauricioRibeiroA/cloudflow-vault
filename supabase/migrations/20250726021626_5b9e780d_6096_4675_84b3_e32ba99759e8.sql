@@ -181,43 +181,5 @@ BEGIN
 END;
 $function$;
 
--- 6. Create test users
-INSERT INTO public.profiles (user_id, full_name, email, group_name, company_id, status)
-SELECT 
-  gen_random_uuid(),
-  'João Gestor',
-  'gestor@sistema.com',
-  'super_admin',
-  (SELECT id FROM public.companies LIMIT 1),
-  'active'
-WHERE NOT EXISTS (SELECT 1 FROM public.profiles WHERE email = 'gestor@sistema.com');
-
-INSERT INTO public.profiles (user_id, full_name, email, group_name, company_id, status)
-SELECT 
-  gen_random_uuid(),
-  'Maria Admin',
-  'admin@empresa.com',
-  'company_admin',
-  (SELECT id FROM public.companies LIMIT 1),
-  'active'
-WHERE NOT EXISTS (SELECT 1 FROM public.profiles WHERE email = 'admin@empresa.com');
-
-INSERT INTO public.profiles (user_id, full_name, email, group_name, company_id, status)
-SELECT 
-  gen_random_uuid(),
-  'Ana RH',
-  'rh@empresa.com',
-  'hr',
-  (SELECT id FROM public.companies LIMIT 1),
-  'active'
-WHERE NOT EXISTS (SELECT 1 FROM public.profiles WHERE email = 'rh@empresa.com');
-
-INSERT INTO public.profiles (user_id, full_name, email, group_name, company_id, status)
-SELECT 
-  gen_random_uuid(),
-  'Carlos Usuário',
-  'usuario@empresa.com',
-  'user',
-  (SELECT id FROM public.companies LIMIT 1),
-  'active'
-WHERE NOT EXISTS (SELECT 1 FROM public.profiles WHERE email = 'usuario@empresa.com');
+-- Test users will be created through the application after authentication is set up
+-- Removing insertions to avoid FK constraint violations during migration

@@ -273,10 +273,4 @@ CREATE POLICY "Users can delete files they have access to" ON storage.objects
     auth.uid() IS NOT NULL
   );
 
--- Inserir pastas padrão
-INSERT INTO public.folders (name, parent_id, created_by) VALUES 
-  ('Financeiro', NULL, (SELECT id FROM auth.users LIMIT 1)),
-  ('RH', NULL, (SELECT id FROM auth.users LIMIT 1)),
-  ('TI', NULL, (SELECT id FROM auth.users LIMIT 1)),
-  ('Geral', NULL, (SELECT id FROM auth.users LIMIT 1))
-ON CONFLICT DO NOTHING;
+-- Pastas padrão serão criadas pela aplicação quando necessário

@@ -99,29 +99,24 @@ BEGIN
 END;
 $$;
 
--- Create restrictive policies that prevent direct table updates
+-- Drop the old update policy and create restrictive policy that prevents direct table updates
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+
 CREATE POLICY "Prevent direct profile updates" 
 ON public.profiles 
 FOR UPDATE 
 USING (false);
 
--- Allow users to view their own profile
-CREATE POLICY "Users can view their own profile" 
-ON public.profiles 
-FOR SELECT 
-USING (auth.uid() = user_id);
-
--- Allow admins to view all profiles  
-CREATE POLICY "Admins can view all profiles" 
-ON public.profiles 
-FOR SELECT 
-USING (is_admin());
-
 -- Add constraints to prevent invalid status/group values
-ALTER TABLE public.profiles 
-ADD CONSTRAINT IF NOT EXISTS check_valid_group_name 
-CHECK (group_name IN ('admin', 'rh', 'user'));
-
-ALTER TABLE public.profiles 
-ADD CONSTRAINT IF NOT EXISTS check_valid_status 
-CHECK (status IN ('active', 'inactive', 'suspended'));
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_valid_group_name') THEN
+        ALTER TABLE public.profiles ADD CONSTRAINT check_valid_group_name 
+        CHECK (group_name IN ('admin', 'rh', 'user'));
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_valid_status') THEN
+        ALTER TABLE public.profiles ADD CONSTRAINT check_valid_status 
+        CHECK (status IN ('active', 'inactive', 'suspended'));
+    END IF;
+END $$;

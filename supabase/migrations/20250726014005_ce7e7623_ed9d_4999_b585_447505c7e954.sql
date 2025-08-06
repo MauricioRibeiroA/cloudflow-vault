@@ -1,0 +1,2 @@
+-- Default settings will be created after admin user is set up
+-- Removing insertion to avoid FK constraint violation during migration

@@ -1,5 +1,7 @@
 import BackblazeUpload from '@/components/BackblazeUpload';
 
-export default function Upload() {
+const BackblazeB2 = () => {
   return <BackblazeUpload />;
-}
+};
+
+export default BackblazeB2;

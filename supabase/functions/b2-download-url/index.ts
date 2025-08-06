@@ -33,12 +33,18 @@ serve(async (req) => {
     // Get user profile and company
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('company_id, status')
+      .select('company_id, status, group_name')
       .eq('user_id', user.id)
       .single();
 
-    if (!profile || profile.status !== 'active' || !profile.company_id) {
+    if (!profile || profile.status !== 'active') {
       throw new Error('Invalid user profile');
+    }
+    
+    // Super admins can operate without company_id
+    const isSuperAdmin = profile.group_name === 'super_admin';
+    if (!isSuperAdmin && !profile.company_id) {
+      throw new Error('Invalid user profile - no company association');
     }
 
     const { fileId } = await req.json();
@@ -48,12 +54,19 @@ serve(async (req) => {
     }
 
     // Get file metadata and verify access
-    const { data: file } = await supabaseClient
+    let fileQuery = supabaseClient
       .from('files')
-      .select('file_path, name, company_id')
-      .eq('id', fileId)
-      .eq('company_id', profile.company_id)
-      .single();
+      .select('file_path, name, company_id, uploaded_by')
+      .eq('id', fileId);
+    
+    // Apply access control
+    if (profile.company_id) {
+      fileQuery = fileQuery.eq('company_id', profile.company_id);
+    } else if (isSuperAdmin) {
+      fileQuery = fileQuery.eq('uploaded_by', user.id).is('company_id', null);
+    }
+    
+    const { data: file } = await fileQuery.single();
 
     if (!file) {
       throw new Error('File not found or access denied');

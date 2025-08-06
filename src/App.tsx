@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/components/auth/AuthContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+// import { BootstrapCheck } from '@/components/auth/BootstrapCheck'
 
 import { AppLayout } from '@/components/layout/AppLayout'
 import Index from './pages/Index'
@@ -14,6 +15,9 @@ import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import Upload from './pages/Upload'
+import SimpleUpload from './pages/SimpleUpload'
+import BackblazeB2 from './pages/BackblazeB2'
+import SimpleBackblaze from './pages/SimpleBackblaze'
 import BusinessRules from './pages/BusinessRules'
 import Logs from './pages/Logs'
 import Backup from './pages/Backup'
@@ -27,13 +31,14 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
+        {/* <BootstrapCheck> */}
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
 
               <Route
                 path="/dashboard"
@@ -63,6 +68,39 @@ export default function App() {
                   <ProtectedRoute>
                     <AppLayout>
                       <Upload />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/simple-upload"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <SimpleUpload />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/backblaze-b2"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <BackblazeB2 />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/simple-backblaze"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <SimpleBackblaze />
                     </AppLayout>
                   </ProtectedRoute>
                 }
@@ -127,6 +165,7 @@ export default function App() {
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        {/* </BootstrapCheck> */}
       </AuthProvider>
     </QueryClientProvider>
   )

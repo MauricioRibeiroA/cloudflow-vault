@@ -34,12 +34,17 @@ serve(async (req) => {
 
     if (!profile || profile.status !== 'active') throw new Error('Invalid profile');
     const isSuperAdmin = profile.group_name === 'super_admin';
+    
+    // Super admins can operate without company_id
+    if (!isSuperAdmin && !profile.company_id) {
+      throw new Error('Invalid user profile - no company association');
+    }
 
     const { fileName, fileSize, fileType, folderId } = await req.json();
     if (!fileName || !fileSize || !fileType) throw new Error('Missing file info');
 
     const fileSizeGB = fileSize / (1024 * 1024 * 1024);
-    let storageLimit = 50;
+    let storageLimit = 100; // Default for super admin
 
     if (profile.company_id) {
       const { data: company } = await supabase
@@ -74,7 +79,7 @@ serve(async (req) => {
     const timestamp = now.getTime();
     const basePath = profile.company_id || `user_${user.id}`;
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    const key = `${basePath}/${folderId || 'root'}/${timestamp}-${sanitizedFileName}`;
+    const key = `cloud-vault/${basePath}/${folderId || 'root'}/${timestamp}-${sanitizedFileName}`;
 
     const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
     const host = endpoint.replace(/^https?:\/\//, '');

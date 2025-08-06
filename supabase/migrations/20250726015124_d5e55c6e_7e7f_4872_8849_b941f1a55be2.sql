@@ -38,6 +38,11 @@ BEFORE UPDATE ON public.companies
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
+-- Update group_name constraint to include new admin types
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS check_valid_group_name;
+ALTER TABLE public.profiles ADD CONSTRAINT check_valid_group_name 
+CHECK (group_name IN ('super_admin', 'company_admin', 'hr', 'user'));
+
 -- Create function to get user's company_id
 CREATE OR REPLACE FUNCTION public.get_user_company_id(user_id UUID DEFAULT auth.uid())
 RETURNS UUID

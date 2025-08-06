@@ -11,7 +11,8 @@ import {
   Shield,
   Upload,
   Cog,
-  Building2
+  Building2,
+  Cloud
 } from "lucide-react";
 import {
   Sidebar,
@@ -47,6 +48,11 @@ const menuItems: MenuItem[] = [
     title: "Upload de Arquivos",
     url: "/upload",
     icon: Upload,
+  },
+  {
+    title: "Backblaze B2",
+    url: "/backblaze-b2",
+    icon: Cloud,
   },
   {
     title: "Colaboradores",

@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  cloudflow-vault:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    
+  # Supabase local development (opcional)
+  supabase:
+    image: supabase/supabase:latest
+    ports:
+      - "54321:8000"
+    environment:
+      - POSTGRES_PASSWORD=your_password
+      - JWT_SECRET=your_jwt_secret
+      - ANON_KEY=your_anon_key
+      - SERVICE_KEY=your_service_key
+    volumes:
+      - supabase_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  supabase_data:

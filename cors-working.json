@@ -1,0 +1,31 @@
+[
+  {
+    "corsRuleName": "cloudflow-frontend-complete",
+    "allowedOrigins": [
+      "http://localhost:8080",
+      "http://localhost:8081", 
+      "http://localhost:8082",
+      "http://localhost:5173",
+      "http://192.168.0.114:8080",
+      "http://192.168.0.114:8081",
+      "http://192.168.0.114:8082", 
+      "http://192.168.0.114:5173",
+      "https://*.lovableproject.com",
+      "https://cloudflow-vault.lovable.app",
+      "https://loving-mclean-40d5c8.netlify.app"
+    ],
+    "allowedHeaders": [
+      "authorization",
+      "content-type",
+      "x-amz-date",
+      "x-amz-user-agent"
+    ],
+    "allowedOperations": [
+      "b2_download_file_by_id",
+      "b2_upload_file",
+      "b2_download_file_by_name"
+    ],
+    "exposeHeaders": [],
+    "maxAgeSeconds": 3600
+  }
+]

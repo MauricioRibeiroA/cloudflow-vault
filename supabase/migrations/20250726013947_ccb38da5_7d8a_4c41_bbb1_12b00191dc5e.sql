@@ -1,0 +1,2 @@
+-- Note: Default settings will be created when the first admin user is created
+-- to avoid foreign key constraint issues during initial migration
