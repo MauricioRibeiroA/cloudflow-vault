@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Home
 } from 'lucide-react'
-import { useAuth } from '@/integrations/supabase/auth'
+import { useAuth } from '@/components/auth/AuthContext'
 import { PathSecurityManager, type UserProfile } from '@/utils/pathSecurity'
 import { secureBackblazeService, type SecureB2File } from '@/services/secureBackblaze'
 

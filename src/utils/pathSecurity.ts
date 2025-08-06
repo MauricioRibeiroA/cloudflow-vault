@@ -30,16 +30,20 @@ export class PathSecurityManager {
   async initializeUser(user: User): Promise<void> {
     try {
       const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('id, company_id, role, email')
-        .eq('id', user.id)
+        .from('profiles')
+        .select('user_id as id, company_id, group_name as role, full_name, status')
+        .eq('user_id', user.id)
         .single()
 
       if (error) {
         throw new Error(`Erro ao buscar perfil do usuário: ${error.message}`)
       }
 
-      this.userProfile = profile
+      // Incluir email do usuário autenticado
+      this.userProfile = {
+        ...profile,
+        email: user.email || ''
+      }
     } catch (error) {
       console.error('Erro ao inicializar usuário:', error)
       throw error
