@@ -18,7 +18,12 @@ ADD COLUMN IF NOT EXISTS cidade VARCHAR(100),
 ADD COLUMN IF NOT EXISTS estado VARCHAR(2),
 ADD COLUMN IF NOT EXISTS telefone VARCHAR(20),
 ADD COLUMN IF NOT EXISTS is_self_registered BOOLEAN DEFAULT false,
-ADD COLUMN IF NOT EXISTS registration_source VARCHAR(20) DEFAULT 'manual' CHECK (registration_source IN ('manual', 'trial_signup', 'admin_created'));
+ADD COLUMN IF NOT EXISTS registration_source VARCHAR(20) DEFAULT 'manual' CHECK (registration_source IN ('manual', 'trial_signup', 'admin_created')),
+ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS is_trial_active BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS trial_used BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'inactive' CHECK (subscription_status IN ('inactive', 'trial', 'active', 'cancelled', 'expired'));
 
 -- 2. Adicionar campos extras na tabela profiles para dados do admin
 ALTER TABLE public.profiles
@@ -229,7 +234,87 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 7. View para empresas auto-cadastradas
+-- 7. Inserir plano Trial gratuito (se não existir)
+INSERT INTO plans (name, price_brl, storage_limit_gb, download_limit_gb, max_users) 
+SELECT 'Trial', 0.00, 50, 15, 2
+WHERE NOT EXISTS (SELECT 1 FROM plans WHERE name = 'Trial');
+
+-- 8. Função para iniciar trial gratuito para uma empresa
+CREATE OR REPLACE FUNCTION start_free_trial(company_uuid UUID)
+RETURNS JSON AS $$
+DECLARE
+    trial_plan_id UUID;
+    trial_duration_days INTEGER := 7;
+    result JSON;
+BEGIN
+    -- Verificar se empresa existe
+    IF NOT EXISTS (SELECT 1 FROM public.companies WHERE id = company_uuid) THEN
+        RETURN json_build_object('success', false, 'error', 'Company not found');
+    END IF;
+    
+    -- Verificar se já usou o trial
+    IF EXISTS (SELECT 1 FROM public.companies WHERE id = company_uuid AND trial_used = true) THEN
+        RETURN json_build_object('success', false, 'error', 'Trial already used for this company');
+    END IF;
+    
+    -- Verificar se já tem trial ativo
+    IF EXISTS (SELECT 1 FROM public.companies WHERE id = company_uuid AND is_trial_active = true) THEN
+        RETURN json_build_object('success', false, 'error', 'Trial already active');
+    END IF;
+    
+    -- Buscar ID do plano Trial
+    SELECT id INTO trial_plan_id FROM plans WHERE name = 'Trial' LIMIT 1;
+    
+    IF trial_plan_id IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'Trial plan not found');
+    END IF;
+    
+    -- Ativar trial
+    UPDATE public.companies
+    SET 
+        plan_id = trial_plan_id,
+        trial_started_at = NOW(),
+        trial_ends_at = NOW() + INTERVAL '7 days',
+        is_trial_active = true,
+        trial_used = true,
+        subscription_status = 'trial',
+        current_storage_used_bytes = 0,
+        current_download_used_bytes = 0,
+        download_reset_date = DATE_TRUNC('month', NOW())::DATE
+    WHERE id = company_uuid;
+    
+    -- Log da ação (apenas se tabela user_action_logs existir)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_action_logs' AND table_schema = 'public') THEN
+        INSERT INTO user_action_logs (
+            company_id, user_id, action_type, details
+        ) 
+        SELECT 
+            company_uuid,
+            (SELECT user_id FROM public.profiles WHERE company_id = company_uuid AND group_name = 'company_admin' LIMIT 1),
+            'trial_started',
+            json_build_object(
+                'trial_duration_days', trial_duration_days,
+                'trial_ends_at', NOW() + INTERVAL '7 days',
+                'plan_name', 'Trial'
+            );
+    END IF;
+    
+    result := json_build_object(
+        'success', true,
+        'message', 'Trial started successfully',
+        'trial_started_at', NOW(),
+        'trial_ends_at', NOW() + INTERVAL '7 days',
+        'plan_name', 'Trial',
+        'storage_limit_gb', 50,
+        'download_limit_gb', 15,
+        'max_users', 2
+    );
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 9. View para empresas auto-cadastradas
 CREATE OR REPLACE VIEW self_registered_companies AS
 SELECT 
     c.id,
