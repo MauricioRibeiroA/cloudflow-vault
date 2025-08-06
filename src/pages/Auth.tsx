@@ -53,14 +53,31 @@ const Auth = () => {
         return;
       }
 
+      console.log('Tentando fazer login com:', { email, password: '***' });
+      
       const { error } = await signIn(email, password);
+      
       if (error) {
+        console.error('Erro detalhado de login:', error);
+        
+        // Mensagens de erro mais específicas
+        let errorMessage = "Email ou senha incorretos. Tente novamente.";
+        
+        if (error.message?.includes('Invalid login credentials')) {
+          errorMessage = "Credenciais inválidas. Verifique seu email e senha.";
+        } else if (error.message?.includes('Email not confirmed')) {
+          errorMessage = "Email não confirmado. Verifique sua caixa de entrada.";
+        } else if (error.message?.includes('Too many requests')) {
+          errorMessage = "Muitas tentativas. Aguarde alguns minutos.";
+        }
+        
         toast({
           title: "Erro no login",
-          description: "Email ou senha incorretos. Tente novamente.",
+          description: errorMessage,
           variant: "destructive",
         });
       } else {
+        console.log('Login realizado com sucesso!');
         toast({
           title: "Login realizado com sucesso!",
           description: "Bem-vindo ao CloudFlow Vault.",
