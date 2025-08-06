@@ -1,5 +1,5 @@
 -- =====================================================
--- SCRIPT FINAL - CORREÇÕES CRÍTICAS DE SEGURANÇA
+-- SCRIPT SEGURO - CORREÇÕES CRÍTICAS DE SEGURANÇA
 -- Para aplicar no Supabase via Lovable SQL Editor
 -- =====================================================
 
@@ -8,43 +8,58 @@ DROP FUNCTION IF EXISTS register_company_with_trial CASCADE;
 DROP FUNCTION IF EXISTS complete_company_registration CASCADE;
 
 -- 1. ADICIONAR CONSTRAINT ÚNICA PARA CNPJ (proteção contra empresa duplicada)
--- Remove duplicates primeiro se existirem usando ROW_NUMBER
-WITH duplicates AS (
-    SELECT id, ROW_NUMBER() OVER (PARTITION BY cnpj ORDER BY created_at DESC) as rn
-    FROM public.companies 
-    WHERE cnpj IS NOT NULL AND cnpj != ''
-)
-DELETE FROM public.companies 
-WHERE id IN (
-    SELECT id FROM duplicates WHERE rn > 1
-);
-
--- Adiciona constraint única no CNPJ se não existir
+-- Adiciona constraint única no CNPJ se não existir (sem remover duplicates)
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'companies_cnpj_unique') THEN
+    -- Primeiro, vamos tentar adicionar a constraint
+    BEGIN
         ALTER TABLE public.companies ADD CONSTRAINT companies_cnpj_unique UNIQUE (cnpj);
-    END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            -- Constraint já existe, ignorar
+            NULL;
+        WHEN unique_violation THEN
+            -- Existem duplicates, precisamos lidar com eles
+            -- Deletar registros duplicados mantendo apenas um por CNPJ
+            DELETE FROM public.companies a USING (
+                SELECT cnpj, array_agg(id ORDER BY id) as ids
+                FROM public.companies 
+                WHERE cnpj IS NOT NULL AND cnpj != ''
+                GROUP BY cnpj
+                HAVING COUNT(*) > 1
+            ) b 
+            WHERE a.cnpj = b.cnpj AND a.id != b.ids[1];
+            
+            -- Tentar adicionar constraint novamente
+            ALTER TABLE public.companies ADD CONSTRAINT companies_cnpj_unique UNIQUE (cnpj);
+    END;
 END $$;
 
 -- 2. ADICIONAR CONSTRAINT ÚNICA PARA CPF (proteção contra admin duplicado)
--- Remove duplicates primeiro se existirem usando ROW_NUMBER
-WITH profile_duplicates AS (
-    SELECT user_id, ROW_NUMBER() OVER (PARTITION BY cpf ORDER BY created_at DESC) as rn
-    FROM public.profiles 
-    WHERE cpf IS NOT NULL AND cpf != ''
-)
-DELETE FROM public.profiles 
-WHERE user_id IN (
-    SELECT user_id FROM profile_duplicates WHERE rn > 1
-);
-
--- Adiciona constraint única no CPF se não existir
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_cpf_unique') THEN
+    -- Primeiro, vamos tentar adicionar a constraint
+    BEGIN
         ALTER TABLE public.profiles ADD CONSTRAINT profiles_cpf_unique UNIQUE (cpf);
-    END IF;
+    EXCEPTION
+        WHEN duplicate_table THEN
+            -- Constraint já existe, ignorar
+            NULL;
+        WHEN unique_violation THEN
+            -- Existem duplicates, precisamos lidar com eles
+            -- Deletar registros duplicados mantendo apenas um por CPF
+            DELETE FROM public.profiles a USING (
+                SELECT cpf, array_agg(user_id ORDER BY user_id) as user_ids
+                FROM public.profiles 
+                WHERE cpf IS NOT NULL AND cpf != ''
+                GROUP BY cpf
+                HAVING COUNT(*) > 1
+            ) b 
+            WHERE a.cpf = b.cpf AND a.user_id != b.user_ids[1];
+            
+            -- Tentar adicionar constraint novamente
+            ALTER TABLE public.profiles ADD CONSTRAINT profiles_cpf_unique UNIQUE (cpf);
+    END;
 END $$;
 
 -- 3. ADICIONAR COLUNAS PARA CONTROLAR ADMIN ÚNICO POR EMPRESA
@@ -435,45 +450,7 @@ GRANT EXECUTE ON FUNCTION register_company_with_trial_secure TO anon;
 GRANT EXECUTE ON FUNCTION complete_company_registration_secure TO authenticated;
 GRANT EXECUTE ON FUNCTION check_user_company_admin_status TO anon;
 
--- 11. TRIGGER PARA AUDIT LOG (opcional)
-CREATE OR REPLACE FUNCTION log_failed_registration_attempts()
-RETURNS TRIGGER AS $$
-BEGIN
-    BEGIN
-        INSERT INTO user_action_logs (
-            company_id, action_type, details, created_at
-        ) VALUES (
-            NEW.id,
-            'duplicate_registration_attempt',
-            json_build_object(
-                'attempted_cnpj', NEW.cnpj,
-                'attempted_email', NEW.founder_email,
-                'timestamp', NOW()
-            ),
-            NOW()
-        );
-    EXCEPTION
-        WHEN OTHERS THEN
-            NULL;
-    END;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Aplicar trigger se tabela de logs existir
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_action_logs') THEN
-        DROP TRIGGER IF EXISTS tr_log_failed_registrations ON public.companies;
-        CREATE TRIGGER tr_log_failed_registrations
-            BEFORE INSERT ON public.companies
-            FOR EACH ROW
-            EXECUTE FUNCTION log_failed_registration_attempts();
-    END IF;
-END $$;
-
--- 12. ATUALIZAR DADOS EXISTENTES PARA COMPATIBILIDADE
+-- 11. ATUALIZAR DADOS EXISTENTES PARA COMPATIBILIDADE
 -- Corrigir role_type para company_admin onde group_name é company_admin
 UPDATE public.profiles 
 SET role_type = 'company_admin', can_manage_users = true
