@@ -117,73 +117,36 @@ const Admin = () => {
 
   const handleCreateUser = async () => {
     try {
-      console.log("🚀 Iniciando criação de usuário...");
+      console.log("🚀 Iniciando criação de usuário via SQL function...");
       
       // Validações básicas
       if (!formData.full_name || !formData.email || !formData.password) {
         throw new Error("Por favor, preencha todos os campos obrigatórios");
       }
 
-      if (!profile?.company_id) {
-        throw new Error("Erro: Admin não tem company_id definido");
-      }
-
-      console.log("📧 Criando usuário na autenticação...");
+      console.log("👤 Criando usuário completo via função SQL...");
       
-      // 1. Primeiro criar o usuário na autenticação do Supabase
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        email_confirm: true, // Auto-confirma o email
-        user_metadata: {
-          full_name: formData.full_name,
-        }
+      // Usar função SQL que cria usuário completo (auth + perfil)
+      const { data, error } = await supabase.rpc('admin_create_user_complete', {
+        p_email: formData.email,
+        p_password: formData.password,
+        p_full_name: formData.full_name,
+        p_group_name: formData.group_name,
+        p_department_id: formData.department_id || null,
+        p_position_id: formData.position_id || null
       });
 
-      if (authError) {
-        console.error("❌ Erro ao criar usuário na autenticação:", authError);
-        throw new Error(`Erro na autenticação: ${authError.message}`);
+      if (error) {
+        console.error("❌ Erro ao criar usuário:", error);
+        throw new Error(error.message || 'Erro ao criar usuário');
       }
 
-      if (!authData.user) {
-        throw new Error("Usuário criado mas dados não retornados");
+      if (!data || !data.success) {
+        throw new Error(data?.message || 'Falha na criação do usuário');
       }
 
-      console.log("✅ Usuário criado na autenticação, ID:", authData.user.id);
-      console.log("👤 Criando perfil do usuário...");
-      
-      // 2. Agora criar o perfil com o user_id real
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: authData.user.id, // Usar o ID real do usuário criado
-          full_name: formData.full_name,
-          email: formData.email,
-          group_name: formData.group_name,
-          company_id: profile.company_id,
-          department_id: formData.department_id || null,
-          position_id: formData.position_id || null,
-          status: 'active'
-        })
-        .select()
-        .single();
-
-      if (profileError) {
-        console.error("❌ Erro ao criar perfil:", profileError);
-        
-        // Se falhar ao criar o perfil, tentar deletar o usuário auth criado
-        try {
-          await supabase.auth.admin.deleteUser(authData.user.id);
-          console.log("🧹 Usuário auth removido após falha no perfil");
-        } catch (cleanupError) {
-          console.error("⚠️ Erro ao limpar usuário auth:", cleanupError);
-        }
-        
-        throw new Error(`Erro ao criar perfil: ${profileError.message}`);
-      }
-
-      console.log("✅ Perfil criado com sucesso:", profileData);
-      toast.success("Usuário criado com sucesso!");
+      console.log("✅ Usuário criado com sucesso:", data);
+      toast.success(`Usuário ${data.full_name} criado com sucesso!`);
       setDialogOpen(false);
       resetForm();
       fetchProfiles();
