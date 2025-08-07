@@ -225,60 +225,6 @@ export default function Index() {
             Plataforma completa para organização, controle de acesso e auditoria de
             documentos empresariais com segurança de nível corporativo e planos flexíveis.
           </p>
-
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 px-4 bg-card/30">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">
-              Recursos Poderosos para Sua Empresa
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Tudo que você precisa para gerenciar arquivos corporativos com segurança e eficiência
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="border-0 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-all duration-300">
-                <CardHeader>
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                    <feature.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-gradient-primary">
-        <div className="max-w-4xl mx-auto text-center text-white">
-          <h2 className="text-4xl font-bold mb-6">
-            Pronto para Revolucionar Sua Gestão de Arquivos?
-          </h2>
-          <p className="text-xl mb-8 opacity-90">
-            Experimente todas as funcionalidades sem compromisso e veja como podemos transformar a gestão de documentos da sua empresa.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              size="lg"
-              variant="secondary"
-              onClick={() => navigate('/signup/company')}
-              className="text-lg px-8"
-            >
-              Começar Trial Gratuito 7 Dias
-              <Zap className="ml-2 h-5 w-5" />
-            </Button>
-          </div>
         </div>
       </section>
 
@@ -338,6 +284,59 @@ export default function Index() {
             <p className="text-sm text-muted-foreground mt-4">
               ⏱️ Ativação imediata • 💳 Sem cartão de crédito • ❌ Sem compromisso
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 px-4 bg-card/30">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
+              Recursos Poderosos para Sua Empresa
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Tudo que você precisa para gerenciar arquivos corporativos com segurança e eficiência
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="border-0 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-all duration-300">
+                <CardHeader>
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                    <feature.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 bg-gradient-primary">
+        <div className="max-w-4xl mx-auto text-center text-white">
+          <h2 className="text-4xl font-bold mb-6">
+            Pronto para Revolucionar Sua Gestão de Arquivos?
+          </h2>
+          <p className="text-xl mb-8 opacity-90">
+            Experimente todas as funcionalidades sem compromisso e veja como podemos transformar a gestão de documentos da sua empresa.
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => navigate('/signup/company')}
+              className="text-lg px-8"
+            >
+              Começar Trial Gratuito 7 Dias
+              <Zap className="ml-2 h-5 w-5" />
+            </Button>
           </div>
         </div>
       </section>
