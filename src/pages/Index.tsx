@@ -193,16 +193,29 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-gradient-surface">
-      {/* Hero Section */}
-      <section className="relative py-20 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="inline-flex items-center gap-3 text-4xl font-bold text-primary mb-6">
-            <Shield className="h-12 w-12" />
+      {/* Navigation */}
+      <nav className="relative py-4 px-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="inline-flex items-center gap-3 text-2xl font-bold text-primary">
+            <Shield className="h-8 w-8" />
             CloudFlow Vault
           </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/auth')}
+            className="px-6"
+          >
+            Fazer Login
+          </Button>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative py-16 px-4">
+        <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-5xl font-bold text-foreground mb-6 leading-tight">
             Gestão Inteligente de
-            <span className="bg-gradient-primary bg-clip-text text-transparent">
+            <span className="text-primary">
               {' '}
               Arquivos Corporativos
             </span>
@@ -211,16 +224,6 @@ export default function Index() {
             Plataforma completa para organização, controle de acesso e auditoria de
             documentos empresariais com segurança de nível corporativo e planos flexíveis.
           </p>
-          
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto mb-10">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl font-bold text-primary">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
-          </div>
 
           <div className="flex items-center justify-center gap-4">
             <Button
@@ -229,16 +232,8 @@ export default function Index() {
               onClick={() => navigate('/signup/company')}
               className="text-lg px-8"
             >
-              🎉 Trial Gratuito 7 Dias
+              🚀 Começar Trial Gratuito
               <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate('/auth')}
-              className="text-lg px-8"
-            >
-              Fazer Login
             </Button>
           </div>
         </div>
@@ -270,6 +265,29 @@ export default function Index() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 bg-gradient-primary">
+        <div className="max-w-4xl mx-auto text-center text-white">
+          <h2 className="text-4xl font-bold mb-6">
+            Pronto para Revolucionar Sua Gestão de Arquivos?
+          </h2>
+          <p className="text-xl mb-8 opacity-90">
+            Experimente todas as funcionalidades sem compromisso e veja como podemos transformar a gestão de documentos da sua empresa.
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => navigate('/signup/company')}
+              className="text-lg px-8"
+            >
+              Começar Trial Gratuito 7 Dias
+              <Zap className="ml-2 h-5 w-5" />
+            </Button>
           </div>
         </div>
       </section>
@@ -422,29 +440,6 @@ export default function Index() {
               ))}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-gradient-primary">
-        <div className="max-w-4xl mx-auto text-center text-white">
-          <h2 className="text-4xl font-bold mb-6">
-            Pronto para Revolucionar Sua Gestão de Arquivos?
-          </h2>
-          <p className="text-xl mb-8 opacity-90">
-            Junte-se a centenas de empresas que já confiam no CloudFlow Vault para proteger e organizar seus documentos mais importantes.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              size="lg"
-              variant="secondary"
-              onClick={() => navigate('/signup/company')}
-              className="text-lg px-8"
-            >
-              Começar Trial Gratuito 7 Dias
-              <Zap className="ml-2 h-5 w-5" />
-            </Button>
-          </div>
         </div>
       </section>
 
