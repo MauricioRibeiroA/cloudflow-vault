@@ -87,6 +87,11 @@ export default function Index() {
       baseFeatures.push('Backup automático')
       baseFeatures.push('Logs de auditoria')
     }
+    
+    // Backup semanal específico para o plano Pro (250GB)
+    if (plan.storage_limit_gb === 250 && plan.name === 'Pro') {
+      baseFeatures.push('Backup semanal')
+    }
 
     if (plan.storage_limit_gb >= 500) {
       baseFeatures.push('API de integração')
@@ -102,9 +107,9 @@ export default function Index() {
       id: '1',
       name: 'Starter',
       price_brl: 29.90,
-      storage_limit_gb: 10,
-      download_limit_gb: 50,
-      max_users: 3,
+      storage_limit_gb: 100,
+      download_limit_gb: 30,
+      max_users: 4,
       features: [
         'Armazenamento seguro na nuvem',
         'Upload e download de arquivos',
@@ -115,11 +120,11 @@ export default function Index() {
     },
     {
       id: '2',
-      name: 'Professional',
-      price_brl: 89.90,
-      storage_limit_gb: 100,
-      download_limit_gb: 500,
-      max_users: 10,
+      name: 'Pro',
+      price_brl: 49.90,
+      storage_limit_gb: 250,
+      download_limit_gb: 75,
+      max_users: 6,
       features: [
         'Armazenamento seguro na nuvem',
         'Upload e download de arquivos',
@@ -127,16 +132,17 @@ export default function Index() {
         'Suporte técnico',
         'Gestão de múltiplos usuários',
         'Backup automático',
-        'Logs de auditoria'
+        'Logs de auditoria',
+        'Backup semanal'
       ]
     },
     {
       id: '3',
-      name: 'Enterprise',
-      price_brl: 249.90,
-      storage_limit_gb: 1000,
-      download_limit_gb: 2000,
-      max_users: 50,
+      name: 'Business',
+      price_brl: 79.90,
+      storage_limit_gb: 500,
+      download_limit_gb: 150,
+      max_users: 12,
       features: [
         'Armazenamento seguro na nuvem',
         'Upload e download de arquivos',
