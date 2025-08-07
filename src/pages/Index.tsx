@@ -212,16 +212,16 @@ export default function Index() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative py-16 px-4">
+      <section className="relative py-16 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
         <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-5xl font-bold text-foreground mb-6 leading-tight">
+          <h1 className="text-5xl font-bold text-gray-800 dark:text-white mb-6 leading-tight">
             Gestão Inteligente de
-            <span className="text-primary">
+            <span className="text-blue-600 dark:text-blue-400">
               {' '}
               Arquivos Corporativos
             </span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
             Plataforma completa para organização, controle de acesso e auditoria de
             documentos empresariais com segurança de nível corporativo e planos flexíveis.
           </p>
