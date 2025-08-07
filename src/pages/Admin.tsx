@@ -117,86 +117,47 @@ const Admin = () => {
 
   const handleCreateUser = async () => {
     try {
-      console.log("🚀 Iniciando criação de usuário via SQL function...");
+      console.log("🚀 Iniciando criação de perfil de usuário...");
       
       // Validações básicas
       if (!formData.full_name || !formData.email) {
         throw new Error("Por favor, preencha nome completo e email");
       }
 
-      let data, error;
+      console.log("👤 Criando perfil do usuário...");
       
-      // Tentar primeiro a função completa (se senha foi fornecida)
-      if (formData.password) {
-        console.log("👤 Tentando criar usuário completo (auth + perfil)...");
-        
-        const result = await supabase.rpc('admin_create_user_complete', {
-          p_email: formData.email,
-          p_password: formData.password,
-          p_full_name: formData.full_name,
-          p_group_name: formData.group_name,
-          p_department_id: formData.department_id || null,
-          p_position_id: formData.position_id || null
-        });
-        
-        data = result.data;
-        error = result.error;
-        
-        // Se a função completa falhar, tentar a versao simples
-        if (error && error.message?.includes('gen_salt')) {
-          console.log("⚠️ Função completa falhou, tentando versão simples...");
-          
-          const simpleResult = await supabase.rpc('admin_create_user_simple', {
-            p_email: formData.email,
-            p_full_name: formData.full_name,
-            p_group_name: formData.group_name,
-            p_department_id: formData.department_id || null,
-            p_position_id: formData.position_id || null
-          });
-          
-          data = simpleResult.data;
-          error = simpleResult.error;
-        }
-      } else {
-        // Se não tem senha, usar diretamente a versão simples
-        console.log("👤 Criando perfil do usuário (versão simples)...");
-        
-        const result = await supabase.rpc('admin_create_user_simple', {
-          p_email: formData.email,
-          p_full_name: formData.full_name,
-          p_group_name: formData.group_name,
-          p_department_id: formData.department_id || null,
-          p_position_id: formData.position_id || null
-        });
-        
-        data = result.data;
-        error = result.error;
-      }
+      // Usar sempre a função simples e confiável
+      const { data, error } = await supabase.rpc('admin_create_user_simple_final', {
+        p_email: formData.email,
+        p_full_name: formData.full_name,
+        p_group_name: formData.group_name,
+        p_department_id: formData.department_id || null,
+        p_position_id: formData.position_id || null
+      });
 
       if (error) {
-        console.error("❌ Erro ao criar usuário:", error);
-        throw new Error(error.message || 'Erro ao criar usuário');
+        console.error("❌ Erro ao criar perfil:", error);
+        throw new Error(error.message || 'Erro ao criar perfil do usuário');
       }
 
       if (!data || !data.success) {
-        throw new Error(data?.message || 'Falha na criação do usuário');
+        throw new Error(data?.message || 'Falha na criação do perfil');
       }
 
-      console.log("✅ Usuário criado com sucesso:", data);
+      console.log("✅ Perfil criado com sucesso:", data);
       
-      if (data.requires_signup) {
-        toast.success(`Perfil de ${data.full_name} criado! O usuário deve se registrar usando o email ${data.email}`);
-      } else {
-        toast.success(`Usuário ${data.full_name} criado com sucesso e já pode fazer login!`);
-      }
+      toast.success(
+        `Perfil de ${data.full_name} criado com sucesso! \n` +
+        `O usuário deve se registrar no sistema usando o email: ${data.email}`
+      );
       
       setDialogOpen(false);
       resetForm();
       fetchProfiles();
       
     } catch (error: any) {
-      console.error("💥 Erro ao criar usuário:", error);
-      toast.error(error.message || "Erro ao criar usuário");
+      console.error("💥 Erro ao criar perfil:", error);
+      toast.error(error.message || "Erro ao criar perfil do usuário");
     }
   };
 
@@ -386,17 +347,11 @@ const Admin = () => {
               </div>
 
               {!editingUser && (
-                <div>
-                  <Label htmlFor="password">
-                    Senha <span className="text-sm text-muted-foreground">(opcional - se não fornecida, usuário fará primeiro login)</span>
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Senha (opcional)"
-                  />
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-800">
+                    <strong>Como funciona:</strong> Será criado apenas o perfil do usuário. 
+                    O usuário deve se registrar no sistema usando o email fornecido para ativar sua conta.
+                  </p>
                 </div>
               )}
 
