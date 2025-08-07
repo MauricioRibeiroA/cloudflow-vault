@@ -225,17 +225,26 @@ const Admin = () => {
             );
           } else {
             // ❌ EMAIL FALHOU
-            throw new Error(emailResult.error || emailResult.details || 'Falha no envio de email');
+            const errorMsg = emailResult ? (emailResult.error || emailResult.details || 'Falha no envio de email') : 'Resposta inválida da Edge Function';
+            throw new Error(errorMsg);
           }
           
         } catch (emailError: any) {
           console.error("❌ Erro ao enviar email:", emailError);
           
+          // Determinar mensagem de erro adequada
+          let errorMessage = 'Erro desconhecido no envio de email';
+          if (emailError && emailError.message) {
+            errorMessage = emailError.message;
+          } else if (emailError && typeof emailError === 'string') {
+            errorMessage = emailError;
+          }
+          
           // Atualizar status no banco (email falhou)
           await supabase.rpc('update_invitation_email_status', {
             p_invitation_id: data.invitation_id,
             p_email_sent: false,
-            p_error_message: emailError.message
+            p_error_message: errorMessage
           });
           
           // Mostrar erro com link manual
@@ -244,7 +253,7 @@ const Admin = () => {
           toast.error(
             `⚠️ Usuário ${data.full_name} criado, mas email não foi enviado`,
             {
-              description: `Problema: ${emailError.message}. Use o link manual: ${completionLink}`,
+              description: `Problema: ${errorMessage}. Use o link manual: ${completionLink}`,
               duration: 10000,
               action: {
                 label: "Copiar Link",
