@@ -129,13 +129,31 @@ Deno.serve(async (req) => {
     const result = await response.json()
 
     if (!response.ok) {
-      console.error('❌ Erro da API Resend:', response.status, result)
+      console.error('❌ Erro da API Resend:')
+      console.error('- Status:', response.status)
+      console.error('- Result:', result)
+      console.error('- Headers da requisição:')
+      console.error('  - Authorization: Bearer', resendApiKey.substring(0, 10) + '...')
+      console.error('- Body enviado:')
+      console.error(JSON.stringify({
+        from: 'CloudFlow Vault <onboarding@resend.dev>',
+        to: [emailData.to],
+        subject: emailData.subject,
+        html: '[HTML_CONTENT_TRUNCATED]'
+      }, null, 2))
+      
       return new Response(
         JSON.stringify({ 
           success: false,
           error: 'Failed to send email via Resend',
           details: result.message || `HTTP ${response.status}`,
-          resendError: result
+          httpStatus: response.status,
+          resendError: result,
+          debugInfo: {
+            apiKeyPrefix: resendApiKey.substring(0, 10),
+            emailTo: emailData.to,
+            emailSubject: emailData.subject
+          }
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
