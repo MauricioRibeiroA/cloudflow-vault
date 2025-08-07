@@ -186,25 +186,88 @@ const Admin = () => {
 
       console.log("✅ Perfil criado com sucesso:", data);
       
-      // Verificar se email foi enviado automaticamente
-      if (data.email_sent === true && data.status === 'email_sent') {
-        // ✅ EMAIL ENVIADO COM SUCESSO
-        toast.success(
-          `🎉 Usuário ${data.full_name} criado e email enviado!`,
-          {
-            description: `📧 Email de convite enviado automaticamente para ${data.email}. O usuário deve verificar a caixa de entrada (e spam) para completar o cadastro.`,
-            duration: 6000,
-          }
-        );
-      } else {
-        // ❌ EMAIL FALHOU - MOSTRAR LINK MANUAL
-        const completionLink = `${window.location.origin}/complete-signup?email=${encodeURIComponent(data.email)}`;
+      // Verificar se precisa enviar email
+      if (data.should_send_email) {
+        console.log("📧 Enviando email via Edge Function...");
         
-        toast.error(
-          `⚠️ Usuário ${data.full_name} criado, mas email não foi enviado`,
+        try {
+          // Chamar Edge Function diretamente do frontend
+          const emailResponse = await fetch(`${supabase.supabaseUrl}/functions/v1/send-invitation-email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabase.supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: data.email,
+              fullName: data.full_name,
+              companyName: data.company_name,
+              inviteLink: data.invite_link
+            })
+          });
+          
+          const emailResult = await emailResponse.json();
+          
+          if (emailResponse.ok && emailResult.success) {
+            // ✅ EMAIL ENVIADO COM SUCESSO
+            console.log("✅ Email enviado com sucesso:", emailResult);
+            
+            // Atualizar status no banco
+            await supabase.rpc('update_invitation_email_status', {
+              p_invitation_id: data.invitation_id,
+              p_email_sent: true,
+              p_email_id: emailResult.emailId
+            });
+            
+            toast.success(
+              `🎉 Usuário ${data.full_name} criado e email enviado!`,
+              {
+                description: `📧 Email de convite enviado automaticamente para ${data.email}. O usuário deve verificar a caixa de entrada (e spam) para completar o cadastro.`,
+                duration: 6000,
+              }
+            );
+          } else {
+            // ❌ EMAIL FALHOU
+            throw new Error(emailResult.error || emailResult.details || 'Falha no envio de email');
+          }
+          
+        } catch (emailError: any) {
+          console.error("❌ Erro ao enviar email:", emailError);
+          
+          // Atualizar status no banco (email falhou)
+          await supabase.rpc('update_invitation_email_status', {
+            p_invitation_id: data.invitation_id,
+            p_email_sent: false,
+            p_error_message: emailError.message
+          });
+          
+          // Mostrar erro com link manual
+          const completionLink = data.invite_link;
+          
+          toast.error(
+            `⚠️ Usuário ${data.full_name} criado, mas email não foi enviado`,
+            {
+              description: `Problema: ${emailError.message}. Use o link manual: ${completionLink}`,
+              duration: 10000,
+              action: {
+                label: "Copiar Link",
+                onClick: () => {
+                  navigator.clipboard.writeText(completionLink);
+                  toast.success("Link copiado!");
+                }
+              }
+            }
+          );
+        }
+      } else {
+        // Fallback - email já foi enviado ou não deve ser enviado
+        const completionLink = data.invite_link;
+        
+        toast.success(
+          `✅ Usuário ${data.full_name} criado com sucesso!`,
           {
-            description: `Problema no envio: ${data.email_error || 'Falha na conexão'}. Use o link manual: ${completionLink}`,
-            duration: 10000,
+            description: `Link de convite: ${completionLink}`,
+            duration: 8000,
             action: {
               label: "Copiar Link",
               onClick: () => {
