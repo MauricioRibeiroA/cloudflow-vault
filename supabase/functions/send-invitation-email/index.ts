@@ -131,9 +131,11 @@ Deno.serve(async (req) => {
     console.log('🔑 Usando RESEND_API_KEY do Supabase secrets')
     console.log('📧 Enviando email para:', email)
     
-    // TEMPORÁRIO: Para contas Resend gratuitas, só podemos enviar para o email do proprietário
-    const isTestMode = true; // Mude para false quando o domínio estiver verificado
-    const ownerEmail = 'mauricioribeiro61@gmail.com'; // Email verificado na Resend
+    // CONFIGURAÇÃO DE MODO:
+    // isTestMode = true: Emails redirecionados para mauricioribeiro61@gmail.com (conta Resend gratuita)
+    // isTestMode = false: Emails enviados normalmente (após verificar domínio cloudflow-vault.com na Resend)
+    const isTestMode = true; // 🔄 ALTERE PARA false QUANDO O DOMÍNIO ESTIVER VERIFICADO
+    const ownerEmail = 'mauricioribeiro61@gmail.com'; // Email do proprietário para modo teste
     
     if (isTestMode) {
       console.log('⚠️ MODO TESTE: Redirecionando email para o proprietário devido às limitações da conta Resend gratuita')
