@@ -47,6 +47,7 @@ export default function Index() {
         const { data, error } = await supabase
           .from('plans')
           .select('*')
+          .neq('name', 'Trial')  // Excluir plano Trial da listagem
           .order('price_brl', { ascending: true })
 
         if (error) throw error
@@ -322,7 +323,7 @@ export default function Index() {
                 <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Users className="h-8 w-8 text-green-600 dark:text-green-400" />
                 </div>
-                <h3 className="font-semibold mb-2">2 Usuários</h3>
+                <h3 className="font-semibold mb-2">3 Usuários</h3>
                 <p className="text-sm text-muted-foreground">Convide sua equipe para testar</p>
               </div>
               
