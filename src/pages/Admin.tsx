@@ -234,11 +234,19 @@ const Admin = () => {
               }
             );
           } else {
-            // ❌ EMAIL FALHOU
+            // ❌ EMAIL FALHOU - MOSTRAR DETALHES COMPLETOS
+            console.error('❌ DETALHES COMPLETOS DO ERRO DA EDGE FUNCTION:');
+            console.error('- emailResult completo:', emailResult);
+            console.error('- emailResult.error:', emailResult?.error);
+            console.error('- emailResult.details:', emailResult?.details);
+            console.error('- emailResult.httpStatus:', emailResult?.httpStatus);
+            console.error('- emailResult.resendError:', emailResult?.resendError);
+            console.error('- emailResult.debugInfo:', emailResult?.debugInfo);
+            
             const errorMsg = emailResult ? 
               (emailResult.error || emailResult.details || `Falha no envio: ${JSON.stringify(emailResult)}`) : 
               'Edge Function retornou resposta vazia';
-            console.error('❌ Falha na Edge Function:', errorMsg);
+            console.error('❌ Mensagem de erro final:', errorMsg);
             throw new Error(errorMsg);
           }
           
