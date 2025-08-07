@@ -3,29 +3,41 @@
 -- Execute este SQL inteiro no editor SQL do Supabase
 -- =====================================================
 
--- ===== 1. CORRIGIR PLANOS (REMOVER DUPLICATAS) =====
+-- ===== 1. ADICIONAR COLUNAS DE TRIAL NA TABELA COMPANIES SE NÃO EXISTIREM =====
+
+-- Adicionar colunas relacionadas ao trial na tabela companies
+ALTER TABLE public.companies 
+ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS is_trial_active BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS trial_used BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'inactive';
+
+-- Adicionar constraint se não existir
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'companies_subscription_status_check') THEN
+        ALTER TABLE public.companies ADD CONSTRAINT companies_subscription_status_check 
+        CHECK (subscription_status IN ('inactive', 'trial', 'active', 'cancelled', 'expired'));
+    END IF;
+END $$;
+
+-- ===== 2. CORRIGIR PLANOS (REMOVER DUPLICATAS) =====
 
 -- Deletar todos os planos trial duplicados
 DELETE FROM public.plans WHERE name = 'Trial';
 
 -- Inserir APENAS UM plano trial correto
-INSERT INTO public.plans (name, price_brl, storage_limit_gb, download_limit_gb, max_users, features) 
+INSERT INTO public.plans (name, price_brl, storage_limit_gb, download_limit_gb, max_users) 
 VALUES (
   'Trial', 
   0.00, 
   50, 
   15, 
-  3,
-  ARRAY[
-    'Armazenamento seguro na nuvem',
-    'Interface intuitiva',
-    'Controle de acesso por usuário',
-    'Backup automático',
-    'Suporte por email'
-  ]
+  3
 ) ON CONFLICT DO NOTHING;
 
--- ===== 2. CORRIGIR CONSTRAINT DE STATUS =====
+-- ===== 3. CORRIGIR CONSTRAINT DE STATUS =====
 
 -- Drop das constraints antigas
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS check_valid_status;
@@ -40,7 +52,7 @@ ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS check_valid_group_name;
 ALTER TABLE public.profiles ADD CONSTRAINT check_valid_group_name 
 CHECK (group_name IN ('admin', 'rh', 'user', 'super_admin', 'company_admin', 'hr'));
 
--- ===== 3. CORRIGIR FUNÇÃO DE REGISTRO DE EMPRESA COM TRIAL AUTOMÁTICO =====
+-- ===== 4. CORRIGIR FUNÇÃO DE REGISTRO DE EMPRESA COM TRIAL AUTOMÁTICO =====
 
 CREATE OR REPLACE FUNCTION public.register_company_with_trial_secure(
     -- Dados da empresa
@@ -169,7 +181,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ===== 4. CORRIGIR FUNÇÃO DE FINALIZAÇÃO DO CADASTRO =====
+-- ===== 5. CORRIGIR FUNÇÃO DE FINALIZAÇÃO DO CADASTRO =====
 
 CREATE OR REPLACE FUNCTION public.complete_company_registration_secure(
     p_company_id UUID,
@@ -260,7 +272,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ===== 5. NOVA FUNÇÃO PARA CRIAR USUÁRIOS (SEM FOREIGN KEY ISSUE) =====
+-- ===== 6. NOVA FUNÇÃO PARA CRIAR USUÁRIOS (SEM FOREIGN KEY ISSUE) =====
 
 CREATE OR REPLACE FUNCTION public.admin_create_user_simple_fixed(
   p_email TEXT,
@@ -338,7 +350,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- ===== 6. CRIAR TABELA DE CONVITES DE USUÁRIOS =====
+-- ===== 7. CRIAR TABELA DE CONVITES DE USUÁRIOS =====
 
 CREATE TABLE IF NOT EXISTS public.user_invitations (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -363,13 +375,13 @@ CREATE POLICY "Company admins can manage invitations"
 ON public.user_invitations FOR ALL 
 USING (company_id = get_user_company_id() AND (is_company_admin() OR is_super_admin()));
 
--- ===== 7. PERMISSÕES PARA AS FUNÇÕES =====
+-- ===== 8. PERMISSÕES PARA AS FUNÇÕES =====
 
 GRANT EXECUTE ON FUNCTION public.register_company_with_trial_secure TO anon;
 GRANT EXECUTE ON FUNCTION public.complete_company_registration_secure TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_create_user_simple_fixed TO authenticated;
 
--- ===== 8. COMENTÁRIOS DAS FUNÇÕES =====
+-- ===== 9. COMENTÁRIOS DAS FUNÇÕES =====
 
 COMMENT ON FUNCTION public.register_company_with_trial_secure IS 'Creates company with trial automatically activated';
 COMMENT ON FUNCTION public.complete_company_registration_secure IS 'Completes company registration by creating admin profile';
