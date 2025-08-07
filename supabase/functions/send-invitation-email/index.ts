@@ -130,6 +130,15 @@ Deno.serve(async (req) => {
     
     console.log('🔑 Usando RESEND_API_KEY do Supabase secrets')
     console.log('📧 Enviando email para:', email)
+    
+    // TEMPORÁRIO: Para contas Resend gratuitas, só podemos enviar para o email do proprietário
+    const isTestMode = true; // Mude para false quando o domínio estiver verificado
+    const ownerEmail = 'mauricioribeiro61@gmail.com'; // Email verificado na Resend
+    
+    if (isTestMode) {
+      console.log('⚠️ MODO TESTE: Redirecionando email para o proprietário devido às limitações da conta Resend gratuita')
+      console.log(`📧 Email original: ${email} → Enviando para: ${ownerEmail}`)
+    }
 
     const emailData: EmailData = {
       to: email,
@@ -144,10 +153,13 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'CloudFlow Vault <onboarding@cloudflow-vault.com>', // Usando domínio personalizado
-        to: [emailData.to],
-        subject: emailData.subject,
-        html: emailData.html,
+        from: isTestMode ? 'CloudFlow Vault <mauricioribeiro61@gmail.com>' : 'CloudFlow Vault <onboarding@cloudflow-vault.com>',
+        to: [isTestMode ? ownerEmail : emailData.to], // Para teste: enviar sempre para o proprietário
+        subject: `${isTestMode ? '[TESTE] ' : ''}${emailData.subject}`,
+        html: `
+          ${isTestMode ? '<div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-bottom: 20px; border-radius: 4px;"><strong>⚠️ MODO TESTE:</strong> Este email era para ser enviado para <strong>' + email + '</strong>, mas foi redirecionado para você devido às limitações da conta Resend gratuita. O link de convite ainda funciona normalmente para o email original.</div>' : ''}
+          ${emailData.html}
+        `,
       }),
     })
 
