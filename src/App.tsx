@@ -14,9 +14,7 @@ import Index from './pages/Index'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
-import Upload from './pages/Upload'
 import SimpleUpload from './pages/SimpleUpload'
-import BackblazeB2 from './pages/BackblazeB2'
 import SimpleBackblaze from './pages/SimpleBackblaze'
 import BusinessRules from './pages/BusinessRules'
 import Logs from './pages/Logs'
@@ -70,33 +68,11 @@ export default function App() {
               />
 
               <Route
-                path="/upload"
-                element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Upload />
-                    </AppLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
                 path="/simple-upload"
                 element={
                   <ProtectedRoute>
                     <AppLayout>
                       <SimpleUpload />
-                    </AppLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/backblaze-b2"
-                element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <BackblazeB2 />
                     </AppLayout>
                   </ProtectedRoute>
                 }

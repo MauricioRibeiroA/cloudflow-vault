@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,13 +48,46 @@ export default function BusinessRules() {
   useEffect(() => {
     const fetchData = async () => {
       if (user) {
-        // Simulate fetching profile data
-        const mockProfile = { group_name: 'admin' }; // Simulated for testing
-        setProfile(mockProfile);
+        // Buscar perfil do usuário
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
-        // Simulate fetching departments and positions
-        setDepartments([]);
-        setPositions([]);
+        if (profileError) {
+          console.error('Erro ao buscar perfil:', profileError);
+          setLoading(false);
+          return;
+        }
+
+        setProfile(profileData);
+
+        // Buscar departamentos da empresa do usuário
+        const { data: deptData, error: deptError } = await supabase
+          .from('departments')
+          .select('*')
+          .eq('company_id', profileData.company_id)
+          .order('name');
+
+        if (deptError) {
+          console.error('Erro ao buscar departamentos:', deptError);
+        } else {
+          setDepartments(deptData || []);
+        }
+
+        // Buscar cargos da empresa do usuário
+        const { data: posData, error: posError } = await supabase
+          .from('positions')
+          .select('*, departments(name)')
+          .eq('company_id', profileData.company_id)
+          .order('name');
+
+        if (posError) {
+          console.error('Erro ao buscar cargos:', posError);
+        } else {
+          setPositions(posData || []);
+        }
       }
       setLoading(false);
     };
@@ -62,7 +96,7 @@ export default function BusinessRules() {
   }, [user]);
 
   // Verificar permissões após carregar dados
-  if (!loading && profile && !["admin", "rh"].includes(profile.group_name)) {
+  if (!loading && profile && !["company_admin", "rh_manager"].includes(profile.group_name)) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -76,48 +110,92 @@ export default function BusinessRules() {
       return;
     }
 
-    // Simulate creating department
-    const newDepartment: Department = {
-      id: Math.random().toString(),
-      name: departmentForm.name,
-      description: departmentForm.description,
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .insert({
+          name: departmentForm.name,
+          description: departmentForm.description,
+          company_id: profile.company_id
+        })
+        .select()
+        .single();
 
-    setDepartments([...departments, newDepartment]);
-    setDepartmentForm({ name: '', description: '' });
-    setShowDepartmentDialog(false);
-    toast({
-      title: "Sucesso",
-      description: "Setor criado com sucesso",
-    });
+      if (error) throw error;
+
+      setDepartments([...departments, data]);
+      setDepartmentForm({ name: '', description: '' });
+      setShowDepartmentDialog(false);
+      toast({
+        title: "Sucesso",
+        description: "Setor criado com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Erro ao criar setor:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao criar setor",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleUpdateDepartment = async () => {
     if (!editingDepartment || !departmentForm.name.trim()) return;
 
-    const updatedDepartment = {
-      ...editingDepartment,
-      name: departmentForm.name,
-      description: departmentForm.description,
-    };
+    try {
+      const { error } = await supabase
+        .from('departments')
+        .update({
+          name: departmentForm.name,
+          description: departmentForm.description,
+        })
+        .eq('id', editingDepartment.id);
 
-    setDepartments(departments.map(d => d.id === updatedDepartment.id ? updatedDepartment : d));
-    setDepartmentForm({ name: '', description: '' });
-    setEditingDepartment(null);
-    setShowDepartmentDialog(false);
-    toast({
-      title: "Sucesso",
-      description: "Setor atualizado com sucesso",
-    });
+      if (error) throw error;
+
+      const updatedDepartment = {
+        ...editingDepartment,
+        name: departmentForm.name,
+        description: departmentForm.description,
+      };
+
+      setDepartments(departments.map(d => d.id === updatedDepartment.id ? updatedDepartment : d));
+      setDepartmentForm({ name: '', description: '' });
+      setEditingDepartment(null);
+      setShowDepartmentDialog(false);
+      toast({
+        title: "Sucesso",
+        description: "Setor atualizado com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Erro ao atualizar setor:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar setor",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteDepartment = async (id: string) => {
-    setDepartments(departments.filter(d => d.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Setor deletado com sucesso",
-    });
+    try {
+      const { error } = await supabase.from('departments').delete().eq('id', id);
+      if (error) throw error;
+
+      setDepartments(departments.filter(d => d.id !== id));
+      toast({
+        title: "Sucesso",
+        description: "Setor deletado com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Erro ao deletar setor:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao deletar setor",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCreatePosition = async () => {
@@ -130,49 +208,95 @@ export default function BusinessRules() {
       return;
     }
 
-    const newPosition: Position = {
-      id: Math.random().toString(),
-      name: positionForm.name,
-      description: positionForm.description,
-      department_id: positionForm.department_id,
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const { data, error } = await supabase
+        .from('positions')
+        .insert({
+          name: positionForm.name,
+          description: positionForm.description,
+          department_id: positionForm.department_id,
+          company_id: profile.company_id
+        })
+        .select()
+        .single();
 
-    setPositions([...positions, newPosition]);
-    setPositionForm({ name: '', description: '', department_id: '' });
-    setShowPositionDialog(false);
-    toast({
-      title: "Sucesso",
-      description: "Cargo criado com sucesso",
-    });
+      if (error) throw error;
+
+      setPositions([...positions, data]);
+      setPositionForm({ name: '', description: '', department_id: '' });
+      setShowPositionDialog(false);
+      toast({
+        title: "Sucesso",
+        description: "Cargo criado com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Erro ao criar cargo:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao criar cargo",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleUpdatePosition = async () => {
     if (!editingPosition || !positionForm.name.trim() || !positionForm.department_id) return;
 
-    const updatedPosition = {
-      ...editingPosition,
-      name: positionForm.name,
-      description: positionForm.description,
-      department_id: positionForm.department_id,
-    };
+    try {
+      const { error } = await supabase
+        .from('positions')
+        .update({
+          name: positionForm.name,
+          description: positionForm.description,
+          department_id: positionForm.department_id,
+        })
+        .eq('id', editingPosition.id);
 
-    setPositions(positions.map(p => p.id === updatedPosition.id ? updatedPosition : p));
-    setPositionForm({ name: '', description: '', department_id: '' });
-    setEditingPosition(null);
-    setShowPositionDialog(false);
-    toast({
-      title: "Sucesso",
-      description: "Cargo atualizado com sucesso",
-    });
+      if (error) throw error;
+
+      const updatedPosition = {
+        ...editingPosition,
+        name: positionForm.name,
+        description: positionForm.description,
+        department_id: positionForm.department_id,
+      };
+
+      setPositions(positions.map(p => p.id === updatedPosition.id ? updatedPosition : p));
+      setPositionForm({ name: '', description: '', department_id: '' });
+      setEditingPosition(null);
+      setShowPositionDialog(false);
+      toast({
+        title: "Sucesso",
+        description: "Cargo atualizado com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Erro ao atualizar cargo:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar cargo",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeletePosition = async (id: string) => {
-    setPositions(positions.filter(p => p.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Cargo deletado com sucesso",
-    });
+    try {
+      const { error } = await supabase.from('positions').delete().eq('id', id);
+      if (error) throw error;
+
+      setPositions(positions.filter(p => p.id !== id));
+      toast({
+        title: "Sucesso",
+        description: "Cargo deletado com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Erro ao deletar cargo:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao deletar cargo",
+        variant: "destructive",
+      });
+    }
   };
 
   const openDepartmentDialog = (department?: Department) => {
