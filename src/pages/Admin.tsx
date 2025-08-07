@@ -117,24 +117,43 @@ const Admin = () => {
 
   const handleCreateUser = async () => {
     try {
-      // Usar função admin_create_user que cria diretamente na tabela profiles
-      const { data: userId, error } = await supabase.rpc("admin_create_user", {
-        p_email: formData.email,
-        p_full_name: formData.full_name,
-        p_group_name: formData.group_name,
-        p_company_id: null, // Será determinado automaticamente pela função
-        p_department_id: formData.department_id || null,
-        p_position_id: formData.position_id || null,
-      });
+      console.log("🚀 Tentando criar usuário diretamente na tabela profiles...");
+      
+      // Verificar se o admin atual tem company_id
+      if (!profile?.company_id) {
+        throw new Error("Erro: Admin não tem company_id definido");
+      }
 
-      if (error) throw error;
+      // Criar usuário diretamente na tabela profiles
+      const newUserId = crypto.randomUUID();
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: newUserId,
+          full_name: formData.full_name,
+          email: formData.email,
+          group_name: formData.group_name,
+          company_id: profile.company_id,
+          department_id: formData.department_id || null,
+          position_id: formData.position_id || null,
+          status: 'active'
+        })
+        .select()
+        .single();
 
+      if (error) {
+        console.error("❌ Erro ao inserir na tabela profiles:", error);
+        throw error;
+      }
+
+      console.log("✅ Usuário criado com sucesso:", data);
       toast.success("Usuário criado com sucesso");
       setDialogOpen(false);
       resetForm();
       fetchProfiles();
     } catch (error: any) {
-      console.error("Erro ao criar usuário:", error);
+      console.error("💥 Erro ao criar usuário:", error);
       toast.error(error.message || "Erro ao criar usuário");
     }
   };
@@ -143,15 +162,18 @@ const Admin = () => {
     if (!editingUser) return;
 
     try {
-      const { error } = await supabase.rpc("admin_update_profile", {
-        p_user_id: editingUser.user_id,
-        p_full_name: formData.full_name,
-        p_email: formData.email,
-        p_group_name: formData.group_name,
-        p_status: formData.status,
-        p_department_id: formData.department_id || null,
-        p_position_id: formData.position_id || null,
-      });
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          email: formData.email,
+          group_name: formData.group_name,
+          status: formData.status,
+          department_id: formData.department_id || null,
+          position_id: formData.position_id || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', editingUser.user_id);
 
       if (error) throw error;
 
@@ -170,10 +192,13 @@ const Admin = () => {
     try {
       const newStatus = user.status === "active" ? "inactive" : "active";
       
-      const { error } = await supabase.rpc("admin_update_profile", {
-        p_user_id: user.user_id,
-        p_status: newStatus,
-      });
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.user_id);
 
       if (error) throw error;
 
