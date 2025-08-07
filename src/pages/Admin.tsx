@@ -126,8 +126,8 @@ const Admin = () => {
 
       console.log("👤 Criando perfil e enviando convite por email...");
       
-      // Usar a nova função que envia email automaticamente
-      const { data, error } = await supabase.rpc('admin_create_user_with_email', {
+      // Usar a função que funciona (system de convites)
+      const { data, error } = await supabase.rpc('admin_create_user_simple_fixed', {
         p_email: formData.email,
         p_full_name: formData.full_name,
         p_group_name: formData.group_name,
@@ -146,33 +146,23 @@ const Admin = () => {
 
       console.log("✅ Perfil criado com sucesso:", data);
       
-      if (data.email_sent) {
-        toast.success(
-          `Usuário ${data.full_name} criado com sucesso!`,
-          {
-            description: `Email de convite enviado automaticamente para ${data.email}`,
-            duration: 6000
-          }
-        );
-      } else {
-        // Fallback para o método manual caso o email falhe
-        const completionLink = data.invite_link || `${window.location.origin}/complete-signup?email=${encodeURIComponent(data.email)}`;
-        
-        toast.success(
-          `Usuário ${data.full_name} criado!`,
-          {
-            description: `Falha no envio automático. Envie este link manualmente: ${completionLink}`,
-            duration: 10000,
-            action: {
-              label: "Copiar Link",
-              onClick: () => {
-                navigator.clipboard.writeText(completionLink);
-                toast.success("Link copiado!");
-              }
+      // Sistema atual: link manual (será automático no futuro)
+      const completionLink = `${window.location.origin}/complete-signup?email=${encodeURIComponent(data.email)}`;
+      
+      toast.success(
+        `Usuário ${data.full_name} criado com sucesso!`,
+        {
+          description: `Envie este link para o usuário completar o cadastro: ${completionLink}`,
+          duration: 8000,
+          action: {
+            label: "Copiar Link",
+            onClick: () => {
+              navigator.clipboard.writeText(completionLink);
+              toast.success("Link copiado!");
             }
           }
-        );
-      }
+        }
+      );
       
       setDialogOpen(false);
       resetForm();
@@ -370,11 +360,10 @@ const Admin = () => {
               </div>
 
               {!editingUser && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                  <p className="text-sm text-green-800">
-                    <strong>📧 Processo automatizado:</strong> Será criado o perfil do usuário e um email de convite 
-                    será enviado automaticamente para <strong>{formData.email || 'o email fornecido'}</strong>. 
-                    O usuário receberá todas as instruções para ativar sua conta.
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-800">
+                    <strong>📋 Como funciona:</strong> Será criado um convite para <strong>{formData.email || 'o email fornecido'}</strong>. 
+                    Você receberá um link para enviar ao usuário completar o cadastro.
                   </p>
                 </div>
               )}
