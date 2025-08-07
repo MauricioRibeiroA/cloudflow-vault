@@ -1,0 +1,3 @@
+[function]
+# Permite acesso público sem autenticação
+verify_jwt = false
