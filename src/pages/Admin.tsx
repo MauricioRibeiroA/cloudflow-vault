@@ -204,8 +204,17 @@ const Admin = () => {
           });
           
           console.log('📧 Resposta da Edge Function:', { emailResult, emailError });
+          console.log('📧 Tipo de emailResult:', typeof emailResult, 'Value:', emailResult);
           
-          if (!emailError && emailResult && emailResult.success) {
+          if (emailError) {
+            throw new Error(`Edge Function error: ${emailError.message || JSON.stringify(emailError)}`);
+          }
+          
+          if (!emailResult) {
+            throw new Error('Edge Function retornou resposta vazia');
+          }
+          
+          if (emailResult.success) {
             // ✅ EMAIL ENVIADO COM SUCESSO
             console.log("✅ Email enviado com sucesso:", emailResult);
             
@@ -225,7 +234,10 @@ const Admin = () => {
             );
           } else {
             // ❌ EMAIL FALHOU
-            const errorMsg = emailResult ? (emailResult.error || emailResult.details || 'Falha no envio de email') : 'Resposta inválida da Edge Function';
+            const errorMsg = emailResult ? 
+              (emailResult.error || emailResult.details || `Falha no envio: ${JSON.stringify(emailResult)}`) : 
+              'Edge Function retornou resposta vazia';
+            console.error('❌ Falha na Edge Function:', errorMsg);
             throw new Error(errorMsg);
           }
           
