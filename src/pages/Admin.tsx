@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, UserPlus, Edit, LogOut, Clock, Send } from "lucide-react";
+import { Users, UserPlus, Edit, LogOut, Clock, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
@@ -264,6 +264,30 @@ const Admin = () => {
     } catch (error: any) {
       console.error("Erro ao alterar status:", error);
       toast.error(error.message || "Erro ao alterar status do usuário");
+    }
+  };
+
+  const handleDeleteInvitation = async (invitation: Invitation) => {
+    try {
+      const { data, error } = await supabase.rpc('delete_invitation', {
+        p_invitation_id: invitation.id
+      });
+
+      if (error) {
+        console.error("Erro ao deletar convite:", error);
+        throw new Error(error.message || 'Erro ao deletar convite');
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.message || 'Falha ao deletar convite');
+      }
+
+      toast.success(`Convite para ${invitation.full_name} (${invitation.email}) excluído com sucesso!`);
+      fetchInvitations();
+      
+    } catch (error: any) {
+      console.error("Erro ao deletar convite:", error);
+      toast.error(error.message || "Erro ao excluir convite");
     }
   };
 
@@ -585,6 +609,14 @@ const Admin = () => {
                             }}
                           >
                             <Send className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteInvitation(invitation)}
+                            title="Excluir convite"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>

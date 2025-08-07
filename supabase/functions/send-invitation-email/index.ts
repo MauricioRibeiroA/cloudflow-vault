@@ -77,7 +77,7 @@ serve(async (req) => {
               
               <p><strong>⚠️ Importante:</strong></p>
               <ul>
-                <li>Este convite expira em <strong>7 dias</strong></li>
+                <li>Este convite expira em <strong>24 horas</strong></li>
                 <li>Use o email <strong>${email}</strong> para fazer o cadastro</li>
                 <li>Se você não solicitou este convite, pode ignorar este email</li>
               </ul>
