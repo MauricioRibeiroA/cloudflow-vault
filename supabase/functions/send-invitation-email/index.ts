@@ -18,14 +18,25 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
+  console.log('🚀 Edge Function iniciada - send-invitation-email')
+  console.log('📝 Method:', req.method)
+
   try {
-    const { email, fullName, companyName, inviteLink } = await req.json()
+    const requestBody = await req.json()
+    console.log('📨 Request body:', requestBody)
+    
+    const { email, fullName, companyName, inviteLink } = requestBody
 
     // Validate required fields
     if (!email || !fullName || !inviteLink) {
+      console.error('❌ Missing required fields:', { email: !!email, fullName: !!fullName, inviteLink: !!inviteLink })
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: false,
+          error: 'Missing required fields',
+          details: `Missing: ${!email ? 'email ' : ''}${!fullName ? 'fullName ' : ''}${!inviteLink ? 'inviteLink' : ''}`.trim()
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -122,20 +133,25 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Email sent successfully',
-        emailId: result.id 
+        message: 'Email sent successfully (simulated)',
+        emailId: result.id,
+        simulatedFor: 'development-environment'
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('Error sending email:', error)
+    console.error('❌ Error in Edge Function:', error)
+    console.error('❌ Error stack:', error.stack)
+    
     return new Response(
       JSON.stringify({ 
+        success: false,
         error: 'Failed to send invitation email',
-        details: error.message 
+        details: error.message || 'Unknown error occurred',
+        stack: error.stack
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })

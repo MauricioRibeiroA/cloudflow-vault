@@ -207,6 +207,7 @@ const Admin = () => {
           console.log('📧 Tipo de emailResult:', typeof emailResult, 'Value:', emailResult);
           
           if (emailError) {
+            console.error('❌ emailError:', emailError);
             throw new Error(`Edge Function error: ${emailError.message || JSON.stringify(emailError)}`);
           }
           
@@ -214,7 +215,8 @@ const Admin = () => {
             throw new Error('Edge Function retornou resposta vazia');
           }
           
-          if (emailResult.success) {
+          // Verificar se a resposta indica sucesso
+          if (emailResult.success === true) {
             // ✅ EMAIL ENVIADO COM SUCESSO
             console.log("✅ Email enviado com sucesso:", emailResult);
             
