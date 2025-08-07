@@ -17,11 +17,15 @@ import {
   Crown,
   ArrowLeft,
   RefreshCw,
-  Home
+  Home,
+  Settings
 } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthContext'
 import { PathSecurityManager, type UserProfile } from '@/utils/pathSecurity'
 import { secureBackblazeService, type SecureB2File } from '@/services/secureBackblaze'
+import { FilePermissionModal } from '@/components/FilePermissionModal'
+import { supabase } from '@/integrations/supabase/client'
+import { toast } from 'sonner'
 
 export const SecureFileManager: React.FC = () => {
   const { user } = useAuth()
@@ -37,6 +41,10 @@ export const SecureFileManager: React.FC = () => {
   // Estados para formulários
   const [newFolderName, setNewFolderName] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
+  
+  // Estado do modal de permissões
+  const [showPermissionModal, setShowPermissionModal] = useState(false)
+  const [pendingFolderData, setPendingFolderData] = useState<{ name: string; path: string } | null>(null)
 
   // Inicializar o sistema de segurança
   useEffect(() => {
@@ -157,11 +165,19 @@ export const SecureFileManager: React.FC = () => {
       setError(null)
       
       await secureBackblazeService.createFolder(currentPath, newFolderName.trim())
+      
+      // Preparar dados da pasta para o modal de permissões
+      const folderPath = currentPath ? `${currentPath}/${newFolderName.trim()}` : newFolderName.trim()
+      setPendingFolderData({ name: newFolderName.trim(), path: folderPath })
+      
       setSuccess(`Pasta '${newFolderName}' criada com sucesso`)
       setNewFolderName('')
       
       // Recarregar lista
       await loadFiles(currentPath)
+      
+      // Abrir modal de permissões
+      setShowPermissionModal(true)
       
     } catch (error) {
       setError(`Erro ao criar pasta: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
@@ -230,6 +246,49 @@ export const SecureFileManager: React.FC = () => {
       case 'user': return <File className="h-4 w-4" />
       default: return <Folder className="h-4 w-4" />
     }
+  }
+
+  // Função para aplicar permissões da pasta
+  const handleApplyPermissions = async (permissions: any[]) => {
+    if (!pendingFolderData || !userProfile) return
+
+    try {
+      setLoading(true)
+      
+      // Aplicar permissões usando a função SQL
+      for (const permission of permissions) {
+        const { error } = await supabase.rpc('set_file_permission', {
+          p_company_id: userProfile.company_id,
+          p_folder_path: pendingFolderData.path,
+          p_permission_type: permission.type,
+          p_target_id: permission.target_id,
+          p_permission_level: permission.permission_level
+        })
+
+        if (error) {
+          console.error('Erro ao definir permissão:', error)
+          throw new Error(`Erro ao definir permissão: ${error.message}`)
+        }
+      }
+
+      toast.success(`Permissões aplicadas para a pasta "${pendingFolderData.name}"`)
+      setPendingFolderData(null)
+      
+    } catch (error) {
+      console.error('Erro ao aplicar permissões:', error)
+      toast.error(`Erro ao aplicar permissões: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Função para verificar permissões de uma pasta
+  const handleManagePermissions = async (file: SecureB2File) => {
+    if (!file.isFolder) return
+    
+    const folderPath = file.path
+    setPendingFolderData({ name: file.name, path: folderPath })
+    setShowPermissionModal(true)
   }
 
   if (!isInitialized) {
@@ -433,13 +492,23 @@ export const SecureFileManager: React.FC = () => {
                   
                   <div className="flex items-center gap-2">
                     {file.isFolder ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleNavigateToFolder(file.name)}
-                      >
-                        Abrir
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleNavigateToFolder(file.name)}
+                        >
+                          Abrir
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleManagePermissions(file)}
+                          title="Gerenciar Permissões"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </>
                     ) : (
                       <Button
                         variant="outline"
@@ -464,6 +533,20 @@ export const SecureFileManager: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Permissões */}
+      {showPermissionModal && pendingFolderData && (
+        <FilePermissionModal
+          isOpen={showPermissionModal}
+          onClose={() => {
+            setShowPermissionModal(false)
+            setPendingFolderData(null)
+          }}
+          onConfirm={handleApplyPermissions}
+          folderName={pendingFolderData.name}
+          folderPath={pendingFolderData.path}
+        />
+      )}
     </div>
   )
 }

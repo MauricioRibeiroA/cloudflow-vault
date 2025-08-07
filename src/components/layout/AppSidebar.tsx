@@ -9,10 +9,8 @@ import {
   LogOut,
   Settings,
   Shield,
-  Upload,
   Cog,
   Building2,
-  Cloud,
   CreditCard,
   Crown,
   FolderLock,
@@ -47,16 +45,6 @@ const menuItems: MenuItem[] = [
     title: "Dashboard",
     url: "/dashboard",
     icon: Home,
-  },
-  {
-    title: "Upload de Arquivos",
-    url: "/upload",
-    icon: Upload,
-  },
-  {
-    title: "Backblaze B2",
-    url: "/backblaze-b2",
-    icon: Cloud,
   },
   {
     title: "Planos",
