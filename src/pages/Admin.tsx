@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, UserPlus, Edit, LogOut } from "lucide-react";
+import { Users, UserPlus, Edit, LogOut, Clock, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
@@ -27,6 +27,21 @@ interface Profile {
   created_at: string;
 }
 
+interface Invitation {
+  id: string;
+  email: string;
+  full_name: string;
+  group_name: string;
+  status: string;
+  department_id?: string;
+  position_id?: string;
+  department?: { id: string; name: string };
+  position?: { id: string; name: string };
+  created_at: string;
+  expires_at: string;
+  invited_by: string;
+}
+
 interface Department {
   id: string;
   name: string;
@@ -42,6 +57,7 @@ const Admin = () => {
   const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +105,29 @@ const Admin = () => {
     }
   };
 
+  const fetchInvitations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("user_invitations")
+        .select(`
+          *,
+          department:departments(id, name),
+          position:positions(id, name)
+        `)
+        .in('status', ['pending', 'email_sent'])
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Erro ao carregar convites:", error);
+        return;
+      }
+      
+      setInvitations(data || []);
+    } catch (error) {
+      console.error("Erro ao carregar convites:", error);
+    }
+  };
+
   const fetchDepartmentsAndPositions = async () => {
     try {
       // Fetch departments
@@ -112,6 +151,7 @@ const Admin = () => {
   useEffect(() => {
     fetchCurrentProfile();
     fetchProfiles();
+    fetchInvitations();
     fetchDepartmentsAndPositions();
   }, [user]);
 
@@ -167,6 +207,7 @@ const Admin = () => {
       setDialogOpen(false);
       resetForm();
       fetchProfiles();
+      fetchInvitations();
       
     } catch (error: any) {
       console.error("💥 Erro ao criar perfil:", error);
@@ -480,6 +521,82 @@ const Admin = () => {
           </Dialog>
         </div>
       </div>
+
+      {invitations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Convites Pendentes ({invitations.length})
+            </CardTitle>
+            <CardDescription>
+              Usuários que foram convidados mas ainda não completaram o cadastro
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Setor</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Grupo</TableHead>
+                  <TableHead>Criado em</TableHead>
+                  <TableHead>Expira em</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invitations.map((invitation) => {
+                  const isExpired = new Date(invitation.expires_at) < new Date();
+                  
+                  return (
+                    <TableRow key={invitation.id}>
+                      <TableCell className="font-medium">{invitation.full_name}</TableCell>
+                      <TableCell>{invitation.email}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {invitation.department?.name || 'Não definido'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {invitation.position?.name || 'Não definido'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{getGroupBadge(invitation.group_name)}</TableCell>
+                      <TableCell>
+                        {new Date(invitation.created_at).toLocaleDateString("pt-BR")}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={isExpired ? "destructive" : "secondary"}>
+                          {isExpired ? "Expirado" : new Date(invitation.expires_at).toLocaleDateString("pt-BR")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const completionLink = `${window.location.origin}/complete-signup?email=${encodeURIComponent(invitation.email)}`;
+                              navigator.clipboard.writeText(completionLink);
+                              toast.success("Link copiado!");
+                            }}
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
