@@ -188,69 +188,112 @@ const Admin = () => {
       
       // Verificar se precisa enviar email
       if (data.should_send_email) {
-        console.log("📧 Enviando email via Edge Function com Resend...");
+        console.log("📧 Enviando email diretamente via API Resend (sem Edge Function)...");
         
         try {
-          // Chamar Edge Function usando supabase.functions.invoke
-          console.log(`📡 Invocando Edge Function: send-invitation-email`);
+          // Criar template de email
+          const emailHtml = `
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta charset="utf-8">
+                <style>
+                  body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                  .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                  .header { background: #4f46e5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                  .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+                  .button { 
+                    display: inline-block; 
+                    background: #4f46e5; 
+                    color: white; 
+                    padding: 12px 24px; 
+                    text-decoration: none; 
+                    border-radius: 6px; 
+                    margin: 20px 0;
+                    font-weight: bold;
+                  }
+                  .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <div class="header">
+                    <h1>🎉 Convite para CloudFlow Vault</h1>
+                  </div>
+                  <div class="content">
+                    <h2>Olá, ${data.full_name}!</h2>
+                    <p>Você foi convidado para fazer parte da equipe${data.company_name ? ` da <strong>${data.company_name}</strong>` : ''} no <strong>CloudFlow Vault</strong>.</p>
+                    
+                    <p>Para ativar sua conta e definir sua senha, clique no botão abaixo:</p>
+                    
+                    <div style="text-align: center;">
+                      <a href="${data.invite_link}" class="button">
+                        ✨ Completar Cadastro
+                      </a>
+                    </div>
+                    
+                    <p>Ou copie e cole este link no seu navegador:</p>
+                    <p style="background: #e5e7eb; padding: 10px; border-radius: 4px; word-break: break-all;">
+                      ${data.invite_link}
+                    </p>
+                    
+                    <p><strong>⚠️ Importante:</strong></p>
+                    <ul>
+                      <li>Este convite expira em <strong>24 horas</strong></li>
+                      <li>Use o email <strong>${data.email}</strong> para fazer o cadastro</li>
+                      <li>Se você não solicitou este convite, pode ignorar este email</li>
+                    </ul>
+                  </div>
+                  <div class="footer">
+                    <p>Este email foi enviado automaticamente pelo CloudFlow Vault</p>
+                    <p>Em caso de dúvidas, entre em contato com o administrador da sua empresa</p>
+                  </div>
+                </div>
+              </body>
+            </html>
+          `;
           
-          const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-invitation-email', {
-            body: {
-              email: data.email,
-              fullName: data.full_name,
-              companyName: data.company_name,
-              inviteLink: data.invite_link
-            },
+          // Enviar email diretamente via API Resend
+          const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
             headers: {
+              'Authorization': 'Bearer re_UfpLNwAw_JeoV8LowPLKN5vuMtAKeDLtZ',
               'Content-Type': 'application/json',
-            }
+            },
+            body: JSON.stringify({
+              from: 'CloudFlow Vault <onboarding@resend.dev>',
+              to: [data.email],
+              subject: `🎉 Convite para CloudFlow Vault${data.company_name ? ` - ${data.company_name}` : ''}`,
+              html: emailHtml,
+            }),
           });
           
-          console.log('🔑 Status da requisição Edge Function:');
-          console.log('- emailError:', emailError);
-          console.log('- emailResult:', emailResult);
+          const result = await response.json();
           
-          console.log('📧 Resposta da Edge Function:', { emailResult, emailError });
-          
-          if (emailError) {
-            console.error('❌ emailError:', emailError);
-            throw new Error(`Edge Function error: ${emailError.message || JSON.stringify(emailError)}`);
+          if (!response.ok) {
+            console.error('❌ Erro da API Resend:', response.status, result);
+            throw new Error(`Resend API error: ${result.message || `HTTP ${response.status}`}`);
           }
           
-          if (!emailResult) {
-            throw new Error('Edge Function retornou resposta vazia');
-          }
+          console.log('✅ Email enviado com sucesso via Resend (direto):', result.id);
           
-          // Verificar se a resposta indica sucesso
-          if (emailResult.success === true) {
-            // ✅ EMAIL ENVIADO COM SUCESSO VIA RESEND
-            console.log("✅ Email enviado com sucesso via Resend:", emailResult);
-            
-            // Atualizar status no banco
-            await supabase.rpc('update_invitation_email_status', {
-              p_invitation_id: data.invitation_id,
-              p_email_sent: true,
-              p_email_id: emailResult.emailId
-            });
-            
-            toast.success(
-              `🎉 Usuário ${data.full_name} criado e email enviado via Resend!`,
-              {
-                description: `📧 Email de convite enviado automaticamente para ${data.email} via Resend API. O usuário deve verificar a caixa de entrada (e spam) para completar o cadastro.`,
-                duration: 6000,
-              }
-            );
-          } else {
-            // ❌ EMAIL FALHOU
-            const errorMsg = emailResult ? 
-              (emailResult.error || emailResult.details || `Falha no envio: ${JSON.stringify(emailResult)}`) : 
-              'Edge Function retornou resposta vazia';
-            console.error('❌ Falha na Edge Function:', errorMsg);
-            throw new Error(errorMsg);
-          }
+          // Atualizar status no banco
+          await supabase.rpc('update_invitation_email_status', {
+            p_invitation_id: data.invitation_id,
+            p_email_sent: true,
+            p_email_id: result.id
+          });
+          
+          toast.success(
+            `🎉 Usuário ${data.full_name} criado e email enviado via Resend!`,
+            {
+              description: `📧 Email de convite enviado automaticamente para ${data.email} via Resend API. O usuário deve verificar a caixa de entrada (e spam) para completar o cadastro.`,
+              duration: 6000,
+            }
+          );
           
         } catch (emailError: any) {
-          console.error("❌ Erro ao enviar email:", emailError);
+          console.error("❌ Erro ao enviar email diretamente via Resend:", emailError);
           
           // Determinar mensagem de erro adequada
           let errorMessage = 'Erro desconhecido no envio de email';
