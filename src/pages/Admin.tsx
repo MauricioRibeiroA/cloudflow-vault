@@ -240,8 +240,8 @@ const Admin = () => {
             console.error('- emailResult.error:', emailResult?.error);
             console.error('- emailResult.details:', emailResult?.details);
             console.error('- emailResult.httpStatus:', emailResult?.httpStatus);
-            console.error('- emailResult.resendError:', emailResult?.resendError);
-            console.error('- emailResult.debugInfo:', emailResult?.debugInfo);
+            console.error('- emailResult.resendError (JSON):', JSON.stringify(emailResult?.resendError, null, 2));
+            console.error('- emailResult.debugInfo (JSON):', JSON.stringify(emailResult?.debugInfo, null, 2));
             
             const errorMsg = emailResult ? 
               (emailResult.error || emailResult.details || `Falha no envio: ${JSON.stringify(emailResult)}`) : 
