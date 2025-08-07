@@ -100,10 +100,22 @@ Deno.serve(async (req) => {
       </html>
     `
 
-    // Use a API Key testada do Resend (onboarding)
-    const resendApiKey = 're_UfpLNwAw_JeoV8LowPLKN5vuMtAKeDLtZ'
+    // Usar secret RESEND_API_KEY configurado no Supabase
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
     
-    console.log('🔑 Usando API Key do Resend (onboarding)')
+    if (!resendApiKey) {
+      console.error('❌ RESEND_API_KEY não encontrada nas variáveis de ambiente')
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'RESEND_API_KEY not configured',
+          details: 'Please set RESEND_API_KEY in Supabase secrets'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    console.log('🔑 Usando RESEND_API_KEY do Supabase secrets')
     console.log('📧 Enviando email para:', email)
 
     const emailData: EmailData = {
