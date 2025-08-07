@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'CloudFlow Vault <onboarding@resend.dev>',
+        from: 'CloudFlow Vault <onboarding@cloudflow-vault.com>', // Usando domínio personalizado
         to: [emailData.to],
         subject: emailData.subject,
         html: emailData.html,
