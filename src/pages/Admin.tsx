@@ -127,7 +127,7 @@ const Admin = () => {
       console.log("👤 Criando perfil do usuário...");
       
       // Usar sempre a função corrigida que não gera foreign key error
-      const { data, error } = await supabase.rpc('admin_create_user_simple_fixed', {
+      const { data, error } = await supabase.rpc('admin_create_user_simple_final', {
         p_email: formData.email,
         p_full_name: formData.full_name,
         p_group_name: formData.group_name,
@@ -146,9 +146,21 @@ const Admin = () => {
 
       console.log("✅ Perfil criado com sucesso:", data);
       
+      const completionLink = `${window.location.origin}/complete-signup?email=${encodeURIComponent(data.email)}`;
+      
       toast.success(
-        `Perfil de ${data.full_name} criado com sucesso! \n` +
-        `O usuário deve se registrar no sistema usando o email: ${data.email}`
+        `Perfil de ${data.full_name} criado com sucesso!`,
+        {
+          description: `Envie este link para o usuário completar o cadastro: ${completionLink}`,
+          duration: 8000,
+          action: {
+            label: "Copiar Link",
+            onClick: () => {
+              navigator.clipboard.writeText(completionLink);
+              toast.success("Link copiado!");
+            }
+          }
+        }
       );
       
       setDialogOpen(false);

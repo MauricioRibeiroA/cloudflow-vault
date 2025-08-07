@@ -25,6 +25,7 @@ import SecureFiles from './pages/SecureFiles'
 import HierarchicalDemo from './pages/HierarchicalDemo'
 import Trial from './pages/Trial'
 import CompanySignup from './pages/CompanySignup'
+import CompleteSignup from './pages/CompleteSignup'
 import NotFound from './pages/NotFound'
 
 const queryClient = new QueryClient()
@@ -42,6 +43,7 @@ export default function App() {
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/signup/company" element={<CompanySignup />} />
+                <Route path="/complete-signup" element={<CompleteSignup />} />
 
               <Route
                 path="/dashboard"
