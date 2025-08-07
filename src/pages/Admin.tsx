@@ -200,8 +200,15 @@ const Admin = () => {
               fullName: data.full_name,
               companyName: data.company_name,
               inviteLink: data.invite_link
+            },
+            headers: {
+              'Content-Type': 'application/json',
             }
           });
+          
+          console.log('🔑 Status da requisição Edge Function:');
+          console.log('- emailError:', emailError);
+          console.log('- emailResult:', emailResult);
           
           console.log('📧 Resposta da Edge Function:', { emailResult, emailError });
           

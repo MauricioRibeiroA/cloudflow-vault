@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,8 +19,43 @@ serve(async (req) => {
   }
 
   console.log('🚀 Edge Function send-invitation-email iniciada')
+  console.log('🔐 Headers recebidos:', Object.fromEntries(req.headers.entries()))
   
   try {
+    // Criar cliente Supabase para validação (opcional)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') 
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')
+    
+    if (supabaseUrl && supabaseKey) {
+      const authHeader = req.headers.get('authorization')
+      console.log('🔑 Authorization header presente:', !!authHeader)
+      
+      if (authHeader) {
+        const supabase = createClient(supabaseUrl, supabaseKey, {
+          global: { headers: { Authorization: authHeader } }
+        })
+        
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        
+        if (authError || !user) {
+          console.log('❌ Erro de autenticação:', authError)
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: 'Unauthorized',
+              details: 'User authentication failed'
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        
+        console.log('✅ Usuário autenticado:', user.email)
+      } else {
+        console.log('⚠️ Nenhum header de autorização fornecido')
+      }
+    } else {
+      console.log('⚠️ Variáveis de ambiente do Supabase não encontradas')
+    }
     const { email, fullName, companyName, inviteLink } = await req.json()
 
     // Validate required fields
