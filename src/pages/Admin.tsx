@@ -120,21 +120,58 @@ const Admin = () => {
       console.log("🚀 Iniciando criação de usuário via SQL function...");
       
       // Validações básicas
-      if (!formData.full_name || !formData.email || !formData.password) {
-        throw new Error("Por favor, preencha todos os campos obrigatórios");
+      if (!formData.full_name || !formData.email) {
+        throw new Error("Por favor, preencha nome completo e email");
       }
 
-      console.log("👤 Criando usuário completo via função SQL...");
+      let data, error;
       
-      // Usar função SQL que cria usuário completo (auth + perfil)
-      const { data, error } = await supabase.rpc('admin_create_user_complete', {
-        p_email: formData.email,
-        p_password: formData.password,
-        p_full_name: formData.full_name,
-        p_group_name: formData.group_name,
-        p_department_id: formData.department_id || null,
-        p_position_id: formData.position_id || null
-      });
+      // Tentar primeiro a função completa (se senha foi fornecida)
+      if (formData.password) {
+        console.log("👤 Tentando criar usuário completo (auth + perfil)...");
+        
+        const result = await supabase.rpc('admin_create_user_complete', {
+          p_email: formData.email,
+          p_password: formData.password,
+          p_full_name: formData.full_name,
+          p_group_name: formData.group_name,
+          p_department_id: formData.department_id || null,
+          p_position_id: formData.position_id || null
+        });
+        
+        data = result.data;
+        error = result.error;
+        
+        // Se a função completa falhar, tentar a versao simples
+        if (error && error.message?.includes('gen_salt')) {
+          console.log("⚠️ Função completa falhou, tentando versão simples...");
+          
+          const simpleResult = await supabase.rpc('admin_create_user_simple', {
+            p_email: formData.email,
+            p_full_name: formData.full_name,
+            p_group_name: formData.group_name,
+            p_department_id: formData.department_id || null,
+            p_position_id: formData.position_id || null
+          });
+          
+          data = simpleResult.data;
+          error = simpleResult.error;
+        }
+      } else {
+        // Se não tem senha, usar diretamente a versão simples
+        console.log("👤 Criando perfil do usuário (versão simples)...");
+        
+        const result = await supabase.rpc('admin_create_user_simple', {
+          p_email: formData.email,
+          p_full_name: formData.full_name,
+          p_group_name: formData.group_name,
+          p_department_id: formData.department_id || null,
+          p_position_id: formData.position_id || null
+        });
+        
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         console.error("❌ Erro ao criar usuário:", error);
@@ -146,7 +183,13 @@ const Admin = () => {
       }
 
       console.log("✅ Usuário criado com sucesso:", data);
-      toast.success(`Usuário ${data.full_name} criado com sucesso!`);
+      
+      if (data.requires_signup) {
+        toast.success(`Perfil de ${data.full_name} criado! O usuário deve se registrar usando o email ${data.email}`);
+      } else {
+        toast.success(`Usuário ${data.full_name} criado com sucesso e já pode fazer login!`);
+      }
+      
       setDialogOpen(false);
       resetForm();
       fetchProfiles();
@@ -344,13 +387,15 @@ const Admin = () => {
 
               {!editingUser && (
                 <div>
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password">
+                    Senha <span className="text-sm text-muted-foreground">(opcional - se não fornecida, usuário fará primeiro login)</span>
+                  </Label>
                   <Input
                     id="password"
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Senha"
+                    placeholder="Senha (opcional)"
                   />
                 </div>
               )}
