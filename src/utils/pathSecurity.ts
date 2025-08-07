@@ -31,7 +31,7 @@ export class PathSecurityManager {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('user_id as id, company_id, group_name as role, full_name, status')
+        .select('user_id, company_id, group_name, full_name, status')
         .eq('user_id', user.id)
         .single()
 
@@ -39,9 +39,11 @@ export class PathSecurityManager {
         throw new Error(`Erro ao buscar perfil do usuário: ${error.message}`)
       }
 
-      // Incluir email do usuário autenticado
+      // Mapear dados do perfil para o formato esperado
       this.userProfile = {
-        ...profile,
+        id: profile.user_id,
+        company_id: profile.company_id || '',
+        role: profile.group_name as 'super_admin' | 'company_admin' | 'user',
         email: user.email || ''
       }
     } catch (error) {
