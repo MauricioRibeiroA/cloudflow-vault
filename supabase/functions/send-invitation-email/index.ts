@@ -110,7 +110,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'CloudFlow Vault <noreply@cloudflowvault.com>',
+        from: 'CloudFlow Vault <onboarding@resend.dev>',  // Use domínio verificado do Resend
         to: [emailData.to],
         subject: emailData.subject,
         html: emailData.html,
