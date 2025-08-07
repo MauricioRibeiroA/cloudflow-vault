@@ -186,23 +186,35 @@ const Admin = () => {
 
       console.log("✅ Perfil criado com sucesso:", data);
       
-      // Sistema atual: link manual (será automático no futuro)
-      const completionLink = `${window.location.origin}/complete-signup?email=${encodeURIComponent(data.email)}`;
-      
-      toast.success(
-        `Usuário ${data.full_name} criado com sucesso!`,
-        {
-          description: `Envie este link para o usuário completar o cadastro: ${completionLink}`,
-          duration: 8000,
-          action: {
-            label: "Copiar Link",
-            onClick: () => {
-              navigator.clipboard.writeText(completionLink);
-              toast.success("Link copiado!");
+      // Verificar se email foi enviado automaticamente
+      if (data.email_sent === true && data.status === 'email_sent') {
+        // ✅ EMAIL ENVIADO COM SUCESSO
+        toast.success(
+          `🎉 Usuário ${data.full_name} criado e email enviado!`,
+          {
+            description: `📧 Email de convite enviado automaticamente para ${data.email}. O usuário deve verificar a caixa de entrada (e spam) para completar o cadastro.`,
+            duration: 6000,
+          }
+        );
+      } else {
+        // ❌ EMAIL FALHOU - MOSTRAR LINK MANUAL
+        const completionLink = `${window.location.origin}/complete-signup?email=${encodeURIComponent(data.email)}`;
+        
+        toast.error(
+          `⚠️ Usuário ${data.full_name} criado, mas email não foi enviado`,
+          {
+            description: `Problema no envio: ${data.email_error || 'Falha na conexão'}. Use o link manual: ${completionLink}`,
+            duration: 10000,
+            action: {
+              label: "Copiar Link",
+              onClick: () => {
+                navigator.clipboard.writeText(completionLink);
+                toast.success("Link copiado!");
+              }
             }
           }
-        }
-      );
+        );
+      }
       
       setDialogOpen(false);
       resetForm();
