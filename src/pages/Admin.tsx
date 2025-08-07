@@ -117,20 +117,46 @@ const Admin = () => {
 
   const handleCreateUser = async () => {
     try {
-      console.log("🚀 Tentando criar usuário diretamente na tabela profiles...");
+      console.log("🚀 Iniciando criação de usuário...");
       
-      // Verificar se o admin atual tem company_id
+      // Validações básicas
+      if (!formData.full_name || !formData.email || !formData.password) {
+        throw new Error("Por favor, preencha todos os campos obrigatórios");
+      }
+
       if (!profile?.company_id) {
         throw new Error("Erro: Admin não tem company_id definido");
       }
 
-      // Criar usuário diretamente na tabela profiles
-      const newUserId = crypto.randomUUID();
+      console.log("📧 Criando usuário na autenticação...");
       
-      const { data, error } = await supabase
+      // 1. Primeiro criar o usuário na autenticação do Supabase
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        email_confirm: true, // Auto-confirma o email
+        user_metadata: {
+          full_name: formData.full_name,
+        }
+      });
+
+      if (authError) {
+        console.error("❌ Erro ao criar usuário na autenticação:", authError);
+        throw new Error(`Erro na autenticação: ${authError.message}`);
+      }
+
+      if (!authData.user) {
+        throw new Error("Usuário criado mas dados não retornados");
+      }
+
+      console.log("✅ Usuário criado na autenticação, ID:", authData.user.id);
+      console.log("👤 Criando perfil do usuário...");
+      
+      // 2. Agora criar o perfil com o user_id real
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .insert({
-          user_id: newUserId,
+          user_id: authData.user.id, // Usar o ID real do usuário criado
           full_name: formData.full_name,
           email: formData.email,
           group_name: formData.group_name,
@@ -142,16 +168,26 @@ const Admin = () => {
         .select()
         .single();
 
-      if (error) {
-        console.error("❌ Erro ao inserir na tabela profiles:", error);
-        throw error;
+      if (profileError) {
+        console.error("❌ Erro ao criar perfil:", profileError);
+        
+        // Se falhar ao criar o perfil, tentar deletar o usuário auth criado
+        try {
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          console.log("🧹 Usuário auth removido após falha no perfil");
+        } catch (cleanupError) {
+          console.error("⚠️ Erro ao limpar usuário auth:", cleanupError);
+        }
+        
+        throw new Error(`Erro ao criar perfil: ${profileError.message}`);
       }
 
-      console.log("✅ Usuário criado com sucesso:", data);
-      toast.success("Usuário criado com sucesso");
+      console.log("✅ Perfil criado com sucesso:", profileData);
+      toast.success("Usuário criado com sucesso!");
       setDialogOpen(false);
       resetForm();
       fetchProfiles();
+      
     } catch (error: any) {
       console.error("💥 Erro ao criar usuário:", error);
       toast.error(error.message || "Erro ao criar usuário");
