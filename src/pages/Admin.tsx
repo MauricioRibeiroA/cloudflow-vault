@@ -191,24 +191,21 @@ const Admin = () => {
         console.log("📧 Enviando email via Edge Function...");
         
         try {
-          // Chamar Edge Function diretamente do frontend
-          const emailResponse = await fetch(`${supabase.supabaseUrl}/functions/v1/send-invitation-email`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${supabase.supabaseKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+          // Chamar Edge Function usando supabase.functions.invoke
+          console.log(`📡 Invocando Edge Function: send-invitation-email`);
+          
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+            body: {
               email: data.email,
               fullName: data.full_name,
               companyName: data.company_name,
               inviteLink: data.invite_link
-            })
+            }
           });
           
-          const emailResult = await emailResponse.json();
+          console.log('📧 Resposta da Edge Function:', { emailResult, emailError });
           
-          if (emailResponse.ok && emailResult.success) {
+          if (!emailError && emailResult && emailResult.success) {
             // ✅ EMAIL ENVIADO COM SUCESSO
             console.log("✅ Email enviado com sucesso:", emailResult);
             
