@@ -1,9 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Edge Function para envio de emails via Resend
+// Configurada como pública para evitar problemas de autenticação
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 interface EmailData {
@@ -12,19 +13,16 @@ interface EmailData {
   html: string
 }
 
-serve(async (req) => {
-  // Handle CORS preflight requests
+// Handler principal
+Deno.serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
-  console.log('🚀 Edge Function send-invitation-email iniciada')
-  console.log('🔐 Headers recebidos:', Object.fromEntries(req.headers.entries()))
-  console.log('🌍 Method:', req.method)
-  console.log('🌍 URL:', req.url)
+  console.log('🚀 SIMPLE Edge Function iniciada')
   
   try {
-    console.log('✅ Prosseguindo sem validação de autenticação (função pública)')
     const { email, fullName, companyName, inviteLink } = await req.json()
 
     // Validate required fields
