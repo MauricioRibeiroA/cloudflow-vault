@@ -166,8 +166,8 @@ const Admin = () => {
 
       console.log("👤 Criando perfil e enviando convite por email...");
       
-      // Usar a função que funciona (system de convites)
-      const { data, error } = await supabase.rpc('admin_create_user_simple_fixed', {
+      // Usar a nova função que envia email automaticamente
+      const { data, error } = await supabase.rpc('admin_create_user_with_email', {
         p_email: formData.email,
         p_full_name: formData.full_name,
         p_group_name: formData.group_name,
@@ -401,10 +401,9 @@ const Admin = () => {
               </div>
 
               {!editingUser && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <p className="text-sm text-blue-800">
-                    <strong>📋 Como funciona:</strong> Será criado um convite para <strong>{formData.email || 'o email fornecido'}</strong>. 
-                    Você receberá um link para enviar ao usuário completar o cadastro.
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-800">
+                    <strong>📧 Envio automático:</strong> Um email de convite será enviado automaticamente para <strong>{formData.email || 'o email fornecido'}</strong> com todas as instruções para completar o cadastro.
                   </p>
                 </div>
               )}
