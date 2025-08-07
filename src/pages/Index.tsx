@@ -47,7 +47,7 @@ export default function Index() {
         const { data, error } = await supabase
           .from('plans')
           .select('*')
-          .neq('name', 'Trial')  // Excluir plano Trial da listagem
+          .gt('price_brl', 0)  // Apenas planos pagos (preço > 0)
           .order('price_brl', { ascending: true })
 
         if (error) throw error
