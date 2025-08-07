@@ -188,7 +188,7 @@ const Admin = () => {
       
       // Verificar se precisa enviar email
       if (data.should_send_email) {
-        console.log("📧 Enviando email via Edge Function...");
+        console.log("📧 Enviando email via Edge Function com Resend...");
         
         try {
           // Chamar Edge Function usando supabase.functions.invoke
@@ -204,7 +204,6 @@ const Admin = () => {
           });
           
           console.log('📧 Resposta da Edge Function:', { emailResult, emailError });
-          console.log('📧 Tipo de emailResult:', typeof emailResult, 'Value:', emailResult);
           
           if (emailError) {
             console.error('❌ emailError:', emailError);
@@ -217,8 +216,8 @@ const Admin = () => {
           
           // Verificar se a resposta indica sucesso
           if (emailResult.success === true) {
-            // ✅ EMAIL ENVIADO COM SUCESSO
-            console.log("✅ Email enviado com sucesso:", emailResult);
+            // ✅ EMAIL ENVIADO COM SUCESSO VIA RESEND
+            console.log("✅ Email enviado com sucesso via Resend:", emailResult);
             
             // Atualizar status no banco
             await supabase.rpc('update_invitation_email_status', {
@@ -228,9 +227,9 @@ const Admin = () => {
             });
             
             toast.success(
-              `🎉 Usuário ${data.full_name} criado e email enviado!`,
+              `🎉 Usuário ${data.full_name} criado e email enviado via Resend!`,
               {
-                description: `📧 Email de convite enviado automaticamente para ${data.email}. O usuário deve verificar a caixa de entrada (e spam) para completar o cadastro.`,
+                description: `📧 Email de convite enviado automaticamente para ${data.email} via Resend API. O usuário deve verificar a caixa de entrada (e spam) para completar o cadastro.`,
                 duration: 6000,
               }
             );
