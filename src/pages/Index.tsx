@@ -226,17 +226,6 @@ export default function Index() {
             documentos empresariais com segurança de nível corporativo e planos flexíveis.
           </p>
 
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              size="lg"
-              variant="gradient"
-              onClick={() => navigate('/signup/company')}
-              className="text-lg px-8"
-            >
-              🚀 Começar Trial Gratuito
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </div>
         </div>
       </section>
 
