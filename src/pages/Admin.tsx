@@ -126,8 +126,8 @@ const Admin = () => {
 
       console.log("👤 Criando perfil do usuário...");
       
-      // Usar sempre a função simples e confiável
-      const { data, error } = await supabase.rpc('admin_create_user_simple_final', {
+      // Usar sempre a função corrigida que não gera foreign key error
+      const { data, error } = await supabase.rpc('admin_create_user_simple_fixed', {
         p_email: formData.email,
         p_full_name: formData.full_name,
         p_group_name: formData.group_name,
