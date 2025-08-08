@@ -82,6 +82,13 @@ interface DashboardStats {
   totalUsers: number;
 }
 
+interface UsageTotals {
+  totalStorageUsed: number;
+  totalStorageAvailable: number;
+  totalDownloadUsed: number;
+  totalDownloadAvailable: number;
+}
+
 export default function SuperAdminDashboard() {
   const [companies, setCompanies] = useState<CompanyWithPlan[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -90,6 +97,12 @@ export default function SuperAdminDashboard() {
     activeCompanies: 0,
     totalRevenue: 0,
     totalUsers: 0
+  });
+  const [usageTotals, setUsageTotals] = useState<UsageTotals>({
+    totalStorageUsed: 0,
+    totalStorageAvailable: 0,
+    totalDownloadUsed: 0,
+    totalDownloadAvailable: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +191,31 @@ export default function SuperAdminDashboard() {
     );
 
     setCompanies(companiesWithUsage);
+    
+    // Calculate usage totals
+    const totals = companiesWithUsage.reduce(
+      (acc, company) => {
+        const storageUsed = company.storage_used_gb || 0;
+        const storageLimit = company.storage_limit_gb || 0;
+        const downloadUsed = company.download_used_gb || 0;
+        const downloadLimit = company.download_limit_gb || 0;
+        
+        return {
+          totalStorageUsed: acc.totalStorageUsed + storageUsed,
+          totalStorageAvailable: acc.totalStorageAvailable + storageLimit,
+          totalDownloadUsed: acc.totalDownloadUsed + downloadUsed,
+          totalDownloadAvailable: acc.totalDownloadAvailable + downloadLimit
+        };
+      },
+      {
+        totalStorageUsed: 0,
+        totalStorageAvailable: 0,
+        totalDownloadUsed: 0,
+        totalDownloadAvailable: 0
+      }
+    );
+    
+    setUsageTotals(totals);
   };
 
   const loadPlans = async () => {
@@ -350,6 +388,65 @@ export default function SuperAdminDashboard() {
             <p className="text-xs text-muted-foreground">
               Empresas ativas
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Usage Totals Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Armazenamento Total</CardTitle>
+            <HardDrive className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{usageTotals.totalStorageUsed.toFixed(2)} GB</span>
+                <span>{usageTotals.totalStorageAvailable.toFixed(2)} GB</span>
+              </div>
+              <Progress 
+                value={usageTotals.totalStorageAvailable > 0 
+                  ? (usageTotals.totalStorageUsed / usageTotals.totalStorageAvailable) * 100 
+                  : 0
+                } 
+                className="w-full h-2"
+              />
+              <div className="text-xs text-muted-foreground text-center">
+                {usageTotals.totalStorageAvailable > 0 
+                  ? ((usageTotals.totalStorageUsed / usageTotals.totalStorageAvailable) * 100).toFixed(1)
+                  : 0
+                }% usado de todas as empresas
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Download Total Mensal</CardTitle>
+            <Download className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{usageTotals.totalDownloadUsed.toFixed(2)} GB</span>
+                <span>{usageTotals.totalDownloadAvailable.toFixed(2)} GB</span>
+              </div>
+              <Progress 
+                value={usageTotals.totalDownloadAvailable > 0 
+                  ? (usageTotals.totalDownloadUsed / usageTotals.totalDownloadAvailable) * 100 
+                  : 0
+                } 
+                className="w-full h-2"
+              />
+              <div className="text-xs text-muted-foreground text-center">
+                {usageTotals.totalDownloadAvailable > 0 
+                  ? ((usageTotals.totalDownloadUsed / usageTotals.totalDownloadAvailable) * 100).toFixed(1)
+                  : 0
+                }% usado de todas as empresas
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

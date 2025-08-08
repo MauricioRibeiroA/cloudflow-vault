@@ -135,19 +135,48 @@ const Companies = () => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Create profile for the new admin
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: authData.user.id,
-            email: adminFormData.email,
-            full_name: adminFormData.full_name,
-            company_id: selectedCompany.id,
-            group_name: 'company_admin',
-            status: 'active'
-          });
-
-        if (profileError) throw profileError;
+        // Wait for the trigger to create the profile and then update it
+        let profileUpdated = false;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (!profileUpdated && attempts < maxAttempts) {
+          attempts++;
+          
+          // Wait a bit before each attempt
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Check if profile exists
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', authData.user.id)
+            .single();
+            
+          if (existingProfile) {
+            // Update the profile that was automatically created by the trigger
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update({
+                full_name: adminFormData.full_name,
+                company_id: selectedCompany.id,
+                group_name: 'company_admin',
+                status: 'active'
+              })
+              .eq('user_id', authData.user.id);
+              
+            if (profileError) {
+              console.error('Profile update error:', profileError);
+              throw profileError;
+            }
+            
+            profileUpdated = true;
+          }
+        }
+        
+        if (!profileUpdated) {
+          throw new Error('Não foi possível atualizar o perfil do usuário após várias tentativas.');
+        }
 
         toast({
           title: "Sucesso",
