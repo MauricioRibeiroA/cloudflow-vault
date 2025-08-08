@@ -4,10 +4,23 @@
 -- =====================================================
 
 -- =====================================================
+-- PREPARAR CONSTRAINT ÚNICO PARA ON CONFLICT
+-- =====================================================
+
+-- Adicionar constraint único no nome do plano (DEVE vir antes dos INSERTs)
+DO $$ 
+BEGIN
+    ALTER TABLE plans ADD CONSTRAINT unique_plan_name UNIQUE (name);
+EXCEPTION WHEN duplicate_object THEN
+    -- Constraint já existe, ignorar
+    NULL;
+END $$;
+
+-- =====================================================
 -- INSERIR TODOS OS PLANOS ATUALIZADOS
 -- =====================================================
 
--- IMPORTANTE: Não deletar planos em uso, usar INSERT ... ON CONFLICT DO UPDATE
+-- IMPORTANTE: Usar INSERT ... ON CONFLICT DO UPDATE para atualizar planos existentes
 -- Isso evita problemas de foreign key constraint
 
 -- Inserir o plano Free Trial
@@ -136,17 +149,8 @@ ON CONFLICT (name) DO UPDATE SET
   updated_at = NOW();
 
 -- =====================================================
--- ADICIONAR UNIQUE CONSTRAINT E COLUNAS PARA CONTROLE DO TRIAL
+-- ADICIONAR COLUNAS PARA CONTROLE DO TRIAL
 -- =====================================================
-
--- Adicionar constraint único no nome do plano (para ON CONFLICT funcionar)
-DO $$ 
-BEGIN
-    ALTER TABLE plans ADD CONSTRAINT unique_plan_name UNIQUE (name);
-EXCEPTION WHEN duplicate_table THEN
-    -- Constraint já existe, ignorar
-    NULL;
-END $$;
 
 -- Adicionar colunas de trial se não existirem
 ALTER TABLE public.companies 
