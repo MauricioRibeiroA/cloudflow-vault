@@ -203,7 +203,7 @@ const CompanyDashboard = () => {
       // Fetch files statistics
       const { data: filesData, error: filesError } = await supabase
         .from('files')
-        .select('id, file_name, file_size, file_type, created_at, uploaded_by')
+        .select('id, name, file_size, file_type, created_at, uploaded_by')
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
 
@@ -269,7 +269,7 @@ const CompanyDashboard = () => {
         const uploader = usersData?.find(u => u.id === file.uploaded_by);
         return {
           id: file.id,
-          name: file.file_name,
+          name: file.name,
           size: file.file_size,
           type: file.file_type,
           uploadedBy: uploader?.full_name || 'Usuário Desconhecido',
