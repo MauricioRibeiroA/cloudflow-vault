@@ -212,14 +212,23 @@ class SecureBackblazeService {
 
       console.log('🔒 Download com validação:', key)
 
-      const data = await this.callEdgeFunction('download', { key })
+      // Edge Function returns file directly, not a URL
+      const response = await supabase.functions.invoke('b2-proxy', {
+        body: { action: 'download', key }
+      })
       
-      if (!data?.downloadUrl) {
-        throw new Error('URL de download não disponível')
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro no download')
       }
 
-      console.log('🔒 URL de download gerada com segurança')
-      return data.downloadUrl
+      // Create blob URL from the response data
+      const blob = new Blob([response.data], { 
+        type: 'application/octet-stream' 
+      })
+      const downloadUrl = URL.createObjectURL(blob)
+      
+      console.log('🔒 Blob URL criada para download com segurança')
+      return downloadUrl
 
     } catch (error) {
       console.error('Erro no download seguro:', error)
