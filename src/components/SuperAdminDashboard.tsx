@@ -158,22 +158,27 @@ export default function SuperAdminDashboard() {
         };
 
         try {
-          // Get real-time usage data using get_company_usage function
-          const { data: usage, error: usageError } = await supabase
-            .rpc('get_company_usage', { company_uuid: company.id });
+          // Get real usage data directly from files table (same as company dashboard)
+          const { data: companyFiles } = await supabase
+            .from('files')
+            .select('file_size')
+            .eq('company_id', company.id);
 
-          if (!usageError && usage) {
-            usageData = {
-              storage_used_gb: usage.storage_used_gb || 0,
-              download_used_gb: usage.download_used_gb || 0,
-              storage_percentage: usage.storage_limit_gb > 0 
-                ? Math.min((usage.storage_used_gb / usage.storage_limit_gb) * 100, 100)
-                : 0,
-              download_percentage: usage.download_limit_gb > 0
-                ? Math.min((usage.download_used_gb / usage.download_limit_gb) * 100, 100)
-                : 0
-            };
-          }
+          const totalStorageBytes = companyFiles?.reduce((sum, file) => sum + file.file_size, 0) || 0;
+          const totalStorageGB = totalStorageBytes / (1024 * 1024 * 1024);
+          
+          // Get storage limit from plans (or use default from Free Trial)
+          const storageLimitGB = company.plans?.storage_limit_gb || 10;
+          const downloadLimitGB = company.plans?.download_limit_gb || 3;
+          
+          usageData = {
+            storage_used_gb: totalStorageGB,
+            download_used_gb: 0, // We don't track download usage in files table
+            storage_percentage: storageLimitGB > 0 
+              ? Math.min((totalStorageGB / storageLimitGB) * 100, 100)
+              : 0,
+            download_percentage: 0 // Since we don't have download tracking
+          };
         } catch (err) {
           console.warn(`Failed to load usage for company ${company.name}:`, err);
         }
