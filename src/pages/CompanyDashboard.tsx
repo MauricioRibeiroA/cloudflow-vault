@@ -119,10 +119,20 @@ const CompanyDashboard = () => {
 
   useEffect(() => {
     if (profile?.company_id) {
-      fetchCompany(profile.company_id);
-      fetchCompanyStats(profile.company_id);
+      loadCompanyData(profile.company_id);
     }
   }, [profile]);
+
+  const loadCompanyData = async (companyId: string) => {
+    try {
+      // Primeiro carregar dados da empresa
+      const companyData = await fetchCompany(companyId);
+      // Depois carregar estatísticas usando os dados da empresa
+      await fetchCompanyStats(companyId, companyData);
+    } catch (error) {
+      console.error('Error loading company data:', error);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -159,7 +169,7 @@ const CompanyDashboard = () => {
 
       if (error) throw error;
 
-      setCompany({
+      const companyData = {
         id: data.id,
         name: data.name,
         subscription_status: data.subscription_status,
@@ -170,13 +180,17 @@ const CompanyDashboard = () => {
         storage_limit_gb: data.plans?.storage_limit_gb,
         download_limit_gb: data.plans?.download_limit_gb,
         max_users: data.plans?.max_users
-      });
+      };
+
+      setCompany(companyData);
+      return companyData; // Return data for immediate use
     } catch (error: any) {
       console.error('Error fetching company:', error);
+      throw error;
     }
   };
 
-  const fetchCompanyStats = async (companyId: string) => {
+  const fetchCompanyStats = async (companyId: string, companyData?: Company) => {
     try {
       // Fetch files statistics
       const { data: filesData, error: filesError } = await supabase
@@ -263,7 +277,7 @@ const CompanyDashboard = () => {
       const avgFileSize = totalFiles > 0 ? totalSize / totalFiles : 0;
 
       // Get current company data with download usage
-      const { data: companyData, error: companyError } = await supabase
+      const { data: usageData, error: companyError } = await supabase
         .from('companies')
         .select('current_storage_used_bytes, current_download_used_bytes, download_reset_date')
         .eq('id', companyId)
@@ -274,24 +288,27 @@ const CompanyDashboard = () => {
       }
 
       // Use real data from database or calculated from files as fallback
-      const storageUsed = companyData?.current_storage_used_bytes || totalSize;
-      const downloadUsed = companyData?.current_download_used_bytes || 0;
+      const storageUsed = usageData?.current_storage_used_bytes || totalSize;
+      const downloadUsed = usageData?.current_download_used_bytes || 0;
+      
+      // Use fresh company data passed as parameter, fallback to React state
+      const currentCompany = companyData || company;
       
       setStats({
         totalFiles,
         totalSize,
         totalUsers,
         storageUsed,
-        storageLimit: (company?.storage_limit_gb || 0) * 1024 * 1024 * 1024,
+        storageLimit: (currentCompany?.storage_limit_gb || 0) * 1024 * 1024 * 1024,
         downloadUsed,
-        downloadLimit: (company?.download_limit_gb || 0) * 1024 * 1024 * 1024,
+        downloadLimit: (currentCompany?.download_limit_gb || 0) * 1024 * 1024 * 1024,
         dailyUploads,
         avgFileSize,
-        planName: company?.plan_name || 'Free Trial',
-        planPrice: company?.price_brl || 0,
-        trialEndsAt: company?.trial_ends_at,
-        isTrialActive: company?.is_trial_active || false,
-        maxUsers: company?.max_users || 0,
+        planName: currentCompany?.plan_name || 'Free Trial',
+        planPrice: currentCompany?.price_brl || 0,
+        trialEndsAt: currentCompany?.trial_ends_at,
+        isTrialActive: currentCompany?.is_trial_active || false,
+        maxUsers: currentCompany?.max_users || 0,
         recentFiles,
         activeUsers: activeUsersList
       });
