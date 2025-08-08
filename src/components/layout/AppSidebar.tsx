@@ -59,7 +59,7 @@ const menuItems: MenuItem[] = [
     title: "Colaboradores",
     url: "/admin",
     icon: Users,
-    requiredGroups: ["company_admin", "super_admin", "hr"],
+    requiredGroups: ["company_admin", "hr"],
   },
   {
     title: "Empresas",

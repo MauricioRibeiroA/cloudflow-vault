@@ -19,6 +19,7 @@ import Logs from './pages/Logs'
 import Backup from './pages/Backup'
 import Settings from './pages/Settings'
 import Companies from './pages/Companies'
+import CompanyDetails from './pages/CompanyDetails'
 import Upgrades from './pages/Upgrades'
 import SuperAdminDashboard from './components/SuperAdminDashboard'
 import SecureFiles from './pages/SecureFiles'
@@ -128,6 +129,17 @@ export default function App() {
                   <ProtectedRoute requiredGroups={['super_admin']}>
                     <AppLayout>
                       <Companies />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/companies/:companyId"
+                element={
+                  <ProtectedRoute requiredGroups={['super_admin']}>
+                    <AppLayout>
+                      <CompanyDetails />
                     </AppLayout>
                   </ProtectedRoute>
                 }

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Building2, Settings, Users } from 'lucide-react';
+import { Plus, Building2, Settings, Users, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Company {
@@ -32,10 +32,17 @@ const Companies = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     domain: '',
     storage_limit_gb: 10
+  });
+  const [adminFormData, setAdminFormData] = useState({
+    full_name: '',
+    email: '',
+    password: ''
   });
 
   useEffect(() => {
@@ -111,6 +118,62 @@ const Companies = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedCompany) return;
+
+    try {
+      // Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: adminFormData.email,
+        password: adminFormData.password,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create profile for the new admin
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: authData.user.id,
+            email: adminFormData.email,
+            full_name: adminFormData.full_name,
+            company_id: selectedCompany.id,
+            group_name: 'company_admin',
+            status: 'active'
+          });
+
+        if (profileError) throw profileError;
+
+        toast({
+          title: "Sucesso",
+          description: `Admin criado com sucesso para ${selectedCompany.name}!`,
+        });
+
+        setAdminDialogOpen(false);
+        setAdminFormData({ full_name: '', email: '', password: '' });
+        setSelectedCompany(null);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível criar o admin.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenAdminDialog = (company: Company) => {
+    setSelectedCompany(company);
+    setAdminDialogOpen(true);
+  };
+
+  const handleOpenCompanyDetails = (companyId: string) => {
+    navigate(`/companies/${companyId}`);
   };
 
   const getStatusBadge = (status: string) => {
@@ -235,10 +298,20 @@ const Companies = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleOpenCompanyDetails(company.id)}
+                        title="Ver detalhes da empresa"
+                      >
                         <Settings className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleOpenAdminDialog(company)}
+                        title="Criar admin para empresa"
+                      >
                         <Users className="h-4 w-4" />
                       </Button>
                     </div>
@@ -249,6 +322,75 @@ const Companies = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Admin Creation Modal */}
+      <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Criar Admin para {selectedCompany?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateAdmin} className="space-y-4">
+            <div>
+              <Label htmlFor="admin_name">Nome Completo</Label>
+              <Input
+                id="admin_name"
+                value={adminFormData.full_name}
+                onChange={(e) => setAdminFormData({ ...adminFormData, full_name: e.target.value })}
+                required
+                placeholder="Nome do administrador"
+              />
+            </div>
+            <div>
+              <Label htmlFor="admin_email">Email</Label>
+              <Input
+                id="admin_email"
+                type="email"
+                value={adminFormData.email}
+                onChange={(e) => setAdminFormData({ ...adminFormData, email: e.target.value })}
+                required
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="admin_password">Senha Temporária</Label>
+              <Input
+                id="admin_password"
+                type="password"
+                value={adminFormData.password}
+                onChange={(e) => setAdminFormData({ ...adminFormData, password: e.target.value })}
+                required
+                placeholder="Senha que o admin usará para fazer login"
+                minLength={6}
+              />
+            </div>
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>💡 Dica:</strong> O admin criado terá acesso total à empresa {selectedCompany?.name}.
+                Compartilhe as credenciais de forma segura com a pessoa responsável.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setAdminDialogOpen(false);
+                  setAdminFormData({ full_name: '', email: '', password: '' });
+                  setSelectedCompany(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Criar Admin
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
