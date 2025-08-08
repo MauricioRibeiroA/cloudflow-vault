@@ -26,7 +26,6 @@ import HierarchicalDemo from './pages/HierarchicalDemo'
 import Trial from './pages/Trial'
 import CompanySignup from './pages/CompanySignup'
 import CompleteSignup from './pages/CompleteSignup'
-import UpdatePlans from './pages/UpdatePlans'
 import NotFound from './pages/NotFound'
 
 const queryClient = new QueryClient()
@@ -45,7 +44,6 @@ export default function App() {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/signup/company" element={<CompanySignup />} />
                 <Route path="/complete-signup" element={<CompleteSignup />} />
-                <Route path="/update-plans" element={<UpdatePlans />} />
 
               <Route
                 path="/dashboard"
