@@ -277,6 +277,12 @@ class SecureBackblazeService {
             console.log('🔒 Download registrado com sucesso!')
             
             // Update company download usage counter
+            console.log('🔒 Chamando update_download_usage com:', {
+              company_uuid: companyId,
+              bytes_downloaded: fileSize,
+              fileName: fileName
+            })
+            
             const { data: usageResult, error: usageError } = await supabase
               .rpc('update_download_usage', {
                 company_uuid: companyId,
@@ -284,9 +290,23 @@ class SecureBackblazeService {
               })
             
             if (usageError) {
-              console.error('🔒 Erro ao atualizar contador de download:', usageError)
+              console.error('🔒 ERRO ao atualizar contador de download:', usageError)
+              console.error('🔒 Parâmetros usados:', { company_uuid: companyId, bytes_downloaded: fileSize })
             } else {
-              console.log('🔒 Contador de download atualizado:', usageResult)
+              console.log('🔒 SUCESSO - Contador de download atualizado:', usageResult)
+              
+              // Verificar se realmente foi atualizado no banco
+              try {
+                const { data: companyCheck } = await supabase
+                  .from('companies')
+                  .select('current_download_used_bytes, name')
+                  .eq('id', companyId)
+                  .single()
+                  
+                console.log('🔒 Estado atual da empresa após update:', companyCheck)
+              } catch (checkError) {
+                console.error('🔒 Erro ao verificar estado da empresa:', checkError)
+              }
             }
           }
         }
