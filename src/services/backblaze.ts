@@ -152,6 +152,54 @@ class BackblazeService {
       });
 
       await getS3Client().send(command);
+      
+      // Save metadata to Supabase files table
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Get user's company_id
+        const { data: companyIdData, error: companyIdError } = await supabase
+          .rpc('get_user_company_id', { user_id: user.id });
+        
+        if (companyIdError) {
+          console.error('Error getting company_id:', companyIdError);
+        } else {
+          const companyId = companyIdData;
+          
+          // Insert file metadata
+          const { error: dbError } = await supabase
+            .from('files')
+            .insert({
+              name: file.name,
+              file_path: filePath,
+              file_size: file.size,
+              file_type: file.type || 'application/octet-stream',
+              folder_id: path || null,
+              uploaded_by: user.id,
+              company_id: companyId
+            });
+
+          if (dbError) {
+            console.error('Error saving file metadata:', dbError);
+          } else {
+            // Log the upload action
+            await supabase
+              .from('logs')
+              .insert({
+                user_id: user.id,
+                company_id: companyId,
+                action: 'file_upload',
+                target_type: 'file',
+                target_name: file.name,
+                details: {
+                  file_size: file.size,
+                  file_type: file.type,
+                  folder_id: path,
+                  backblaze_key: filePath
+                }
+              });
+          }
+        }
+      }
     } catch (error) {
       console.error('Erro ao fazer upload:', error);
       throw new Error('Falha ao fazer upload do arquivo para Backblaze B2');

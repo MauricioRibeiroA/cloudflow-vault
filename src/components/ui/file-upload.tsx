@@ -67,6 +67,13 @@ export function FileUpload({ currentFolder, onUploadComplete }: FileUploadProps)
     );
 
     try {
+      // Get user's company_id
+      const { data: companyIdData, error: companyIdError } = await supabase
+        .rpc('get_user_company_id', { user_id: user.id });
+      
+      if (companyIdError) throw companyIdError;
+      const companyId = companyIdData;
+
       // Create file path
       const timestamp = Date.now();
       const filename = `${timestamp}-${uploadFile.file.name}`;
@@ -91,7 +98,8 @@ export function FileUpload({ currentFolder, onUploadComplete }: FileUploadProps)
           file_size: uploadFile.file.size,
           file_type: uploadFile.file.type || 'application/octet-stream',
           folder_id: currentFolder,
-          uploaded_by: user.id
+          uploaded_by: user.id,
+          company_id: companyId
         });
 
       if (dbError) throw dbError;
@@ -101,6 +109,7 @@ export function FileUpload({ currentFolder, onUploadComplete }: FileUploadProps)
         .from('logs')
         .insert({
           user_id: user.id,
+          company_id: companyId,
           action: 'file_upload',
           target_type: 'file',
           target_name: uploadFile.file.name,
