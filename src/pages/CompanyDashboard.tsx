@@ -262,8 +262,20 @@ const CompanyDashboard = () => {
 
       const avgFileSize = totalFiles > 0 ? totalSize / totalFiles : 0;
 
-      // Storage usage from file sizes
-      const storageUsed = totalSize;
+      // Get current company data with download usage
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .select('current_storage_used_bytes, current_download_used_bytes, download_reset_date')
+        .eq('id', companyId)
+        .single();
+
+      if (companyError) {
+        console.warn('Error fetching company usage data:', companyError);
+      }
+
+      // Use real data from database or calculated from files as fallback
+      const storageUsed = companyData?.current_storage_used_bytes || totalSize;
+      const downloadUsed = companyData?.current_download_used_bytes || 0;
       
       setStats({
         totalFiles,
@@ -271,7 +283,7 @@ const CompanyDashboard = () => {
         totalUsers,
         storageUsed,
         storageLimit: (company?.storage_limit_gb || 0) * 1024 * 1024 * 1024,
-        downloadUsed: company?.download_limit_gb ? company.download_limit_gb * 0.2 * 1024 * 1024 * 1024 : 0, // Mock data (20% of limit)
+        downloadUsed,
         downloadLimit: (company?.download_limit_gb || 0) * 1024 * 1024 * 1024,
         dailyUploads,
         avgFileSize,
@@ -427,8 +439,20 @@ const CompanyDashboard = () => {
         </Alert>
       )}
 
+      {/* Download Alerts */}
+      {isDownloadCritical && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Download Crítico!</AlertTitle>
+          <AlertDescription>
+            O uso de download mensal está em {downloadPercentage.toFixed(1)}%. 
+            Você pode ter problemas para baixar arquivos até o final do mês.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Main Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Armazenamento</CardTitle>
@@ -518,6 +542,57 @@ const CompanyDashboard = () => {
             <p className={`text-xs mt-1 ${getUsageColor(usersPercentage)}`}>
               {usersPercentage.toFixed(1)}% utilizado
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Trial Status Card */}
+        <Card className={`${stats.isTrialActive ? (daysRemaining <= 2 ? 'border-red-500 bg-red-50/50' : 'border-yellow-500 bg-yellow-50/50') : 'border-green-500 bg-green-50/50'}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {stats.isTrialActive ? 'Trial Status' : 'Status da Conta'}
+            </CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {stats.isTrialActive ? (
+              <>
+                <div className="text-2xl font-bold">
+                  {daysRemaining} dias
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  restantes no trial
+                </p>
+                <div className="mt-2">
+                  <Progress 
+                    value={daysRemaining > 0 ? ((7 - daysRemaining) / 7) * 100 : 100} 
+                    className="h-2"
+                  />
+                </div>
+                <p className={`text-xs mt-1 ${
+                  daysRemaining <= 1 ? 'text-red-600' : 
+                  daysRemaining <= 2 ? 'text-yellow-600' : 
+                  'text-green-600'
+                }`}>
+                  {daysRemaining === 0 ? 'Expira hoje!' : 
+                   daysRemaining === 1 ? 'Expira amanhã!' :
+                   `${((7 - daysRemaining) / 7 * 100).toFixed(0)}% do trial usado`}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  Ativo
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  conta contratada
+                </p>
+                <div className="mt-2">
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                    ✓ Plano Contratado
+                  </Badge>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
