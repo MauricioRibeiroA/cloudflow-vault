@@ -100,10 +100,11 @@ export default function Upgrades() {
 
   const loadData = async () => {
     try {
-      // Load plans
+      // Load plans (excluding Free Trial)
       const { data: plansData, error: plansError } = await supabase
         .from('plans')
         .select('*')
+        .gt('price_brl', 0)
         .order('price_brl', { ascending: true });
 
       if (plansError) throw plansError;
