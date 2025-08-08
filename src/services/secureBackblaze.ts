@@ -221,13 +221,67 @@ class SecureBackblazeService {
         throw new Error(response.error.message || 'Erro no download')
       }
 
+      // Extract filename from key
+      const fileName = key.split('/').pop() || 'download'
+      
       // Create blob URL from the response data
       const blob = new Blob([response.data], { 
         type: 'application/octet-stream' 
       })
       const downloadUrl = URL.createObjectURL(blob)
       
-      console.log('🔒 Blob URL criada para download com segurança')
+      // Create a temporary link to trigger download with correct filename
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = fileName
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Cleanup the blob URL after a short delay
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+      
+      // Log download action and track usage
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          console.log('🔒 Registrando download no Supabase...')
+          
+          // Get user's company_id
+          const { data: companyIdData, error: companyIdError } = await supabase
+            .rpc('get_user_company_id', { user_id: user.id })
+          
+          if (!companyIdError && companyIdData) {
+            const companyId = companyIdData
+            
+            // Get file size from blob for tracking
+            const fileSize = blob.size
+            
+            // Log the download action
+            await supabase
+              .from('logs')
+              .insert({
+                user_id: user.id,
+                company_id: companyId,
+                action: 'file_download',
+                target_type: 'file',
+                target_name: fileName,
+                details: {
+                  file_size: fileSize,
+                  backblaze_key: key,
+                  download_method: 'secure_edge_function'
+                }
+              })
+            
+            console.log('🔒 Download registrado com sucesso!')
+          }
+        }
+      } catch (logError) {
+        console.error('🔒 Erro ao registrar download (não afeta funcionalidade):', logError)
+      }
+      
+      console.log('🔒 Download iniciado com nome correto:', fileName)
       return downloadUrl
 
     } catch (error) {
