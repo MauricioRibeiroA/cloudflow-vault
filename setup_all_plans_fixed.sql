@@ -7,8 +7,8 @@
 -- INSERIR TODOS OS PLANOS ATUALIZADOS
 -- =====================================================
 
--- Primeiro, limpar planos existentes para inserir os novos
-DELETE FROM plans;
+-- IMPORTANTE: Não deletar planos em uso, usar INSERT ... ON CONFLICT DO UPDATE
+-- Isso evita problemas de foreign key constraint
 
 -- Inserir o plano Free Trial
 INSERT INTO plans (
@@ -27,7 +27,13 @@ INSERT INTO plans (
   2,                 -- 2 usuários (força upgrade para equipes)
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (name) DO UPDATE SET
+  price_brl = EXCLUDED.price_brl,
+  storage_limit_gb = EXCLUDED.storage_limit_gb,
+  download_limit_gb = EXCLUDED.download_limit_gb,
+  max_users = EXCLUDED.max_users,
+  updated_at = NOW();
 
 -- Inserir o plano Essencial
 INSERT INTO plans (
@@ -46,7 +52,13 @@ INSERT INTO plans (
   2,                 -- 2 usuários
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (name) DO UPDATE SET
+  price_brl = EXCLUDED.price_brl,
+  storage_limit_gb = EXCLUDED.storage_limit_gb,
+  download_limit_gb = EXCLUDED.download_limit_gb,
+  max_users = EXCLUDED.max_users,
+  updated_at = NOW();
 
 -- Inserir o plano Starter
 INSERT INTO plans (
@@ -65,7 +77,13 @@ INSERT INTO plans (
   4,                 -- 4 usuários
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (name) DO UPDATE SET
+  price_brl = EXCLUDED.price_brl,
+  storage_limit_gb = EXCLUDED.storage_limit_gb,
+  download_limit_gb = EXCLUDED.download_limit_gb,
+  max_users = EXCLUDED.max_users,
+  updated_at = NOW();
 
 -- Inserir o plano Pro
 INSERT INTO plans (
@@ -84,7 +102,13 @@ INSERT INTO plans (
   6,                 -- 6 usuários
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (name) DO UPDATE SET
+  price_brl = EXCLUDED.price_brl,
+  storage_limit_gb = EXCLUDED.storage_limit_gb,
+  download_limit_gb = EXCLUDED.download_limit_gb,
+  max_users = EXCLUDED.max_users,
+  updated_at = NOW();
 
 -- Inserir o plano Business
 INSERT INTO plans (
@@ -103,11 +127,26 @@ INSERT INTO plans (
   12,                -- 12 usuários
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (name) DO UPDATE SET
+  price_brl = EXCLUDED.price_brl,
+  storage_limit_gb = EXCLUDED.storage_limit_gb,
+  download_limit_gb = EXCLUDED.download_limit_gb,
+  max_users = EXCLUDED.max_users,
+  updated_at = NOW();
 
 -- =====================================================
--- ADICIONAR COLUNAS PARA CONTROLE DO TRIAL
+-- ADICIONAR UNIQUE CONSTRAINT E COLUNAS PARA CONTROLE DO TRIAL
 -- =====================================================
+
+-- Adicionar constraint único no nome do plano (para ON CONFLICT funcionar)
+DO $$ 
+BEGIN
+    ALTER TABLE plans ADD CONSTRAINT unique_plan_name UNIQUE (name);
+EXCEPTION WHEN duplicate_table THEN
+    -- Constraint já existe, ignorar
+    NULL;
+END $$;
 
 -- Adicionar colunas de trial se não existirem
 ALTER TABLE public.companies 
