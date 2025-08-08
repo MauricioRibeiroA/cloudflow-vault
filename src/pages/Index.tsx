@@ -105,6 +105,20 @@ export default function Index() {
   const defaultPlans: Plan[] = [
     {
       id: '1',
+      name: 'Essencial',
+      price_brl: 19.90,
+      storage_limit_gb: 30,
+      download_limit_gb: 10,
+      max_users: 2,
+      features: [
+        'Armazenamento seguro na nuvem',
+        'Upload e download de arquivos',
+        'Interface web intuitiva',
+        'Suporte técnico'
+      ]
+    },
+    {
+      id: '2',
       name: 'Starter',
       price_brl: 29.90,
       storage_limit_gb: 100,
@@ -119,7 +133,7 @@ export default function Index() {
       ]
     },
     {
-      id: '2',
+      id: '3',
       name: 'Pro',
       price_brl: 49.90,
       storage_limit_gb: 250,
@@ -137,7 +151,7 @@ export default function Index() {
       ]
     },
     {
-      id: '3',
+      id: '4',
       name: 'Business',
       price_brl: 79.90,
       storage_limit_gb: 500,
@@ -331,17 +345,55 @@ export default function Index() {
             Pronto para Revolucionar Sua Gestão de Arquivos?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Experimente todas as funcionalidades sem compromisso e veja como podemos transformar a gestão de documentos da sua empresa.
+            Muito mais capacidade, mas com controle corporativo.
           </p>
+          
+          {/* Plano Essencial Destaque */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/20">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Badge className="bg-yellow-500 text-black font-semibold">
+                <Star className="w-3 h-3 mr-1" />
+                Melhor Custo-Benefício
+              </Badge>
+            </div>
+            
+            <h3 className="text-3xl font-bold mb-2">Plano Essencial</h3>
+            <div className="text-5xl font-bold mb-4">R$ 19,90<span className="text-xl opacity-70">/mês</span></div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                  <HardDrive className="h-6 w-6" />
+                </div>
+                <p className="font-semibold">30 GB</p>
+                <p className="text-sm opacity-80">Armazenamento</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                  <Users className="h-6 w-6" />
+                </div>
+                <p className="font-semibold">2 Usuários</p>
+                <p className="text-sm opacity-80">Contas</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                  <Download className="h-6 w-6" />
+                </div>
+                <p className="font-semibold">10 GB</p>
+                <p className="text-sm opacity-80">Download/mês</p>
+              </div>
+            </div>
+          </div>
+          
           <div className="flex items-center justify-center gap-4">
             <Button
               size="lg"
               variant="secondary"
               onClick={() => navigate('/signup/company')}
-              className="text-lg px-8"
+              className="text-lg px-8 py-3"
             >
-              Começar Trial Gratuito 7 Dias
-              <Zap className="ml-2 h-5 w-5" />
+              <CreditCard className="mr-2 h-5 w-5" />
+              Contratar Plano Essencial
             </Button>
           </div>
         </div>

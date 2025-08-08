@@ -13,6 +13,7 @@ DELETE FROM plans;
 
 -- Inserir os novos planos com os valores atualizados
 INSERT INTO plans (name, price_brl, storage_limit_gb, download_limit_gb, max_users) VALUES
+('Essencial', 19.90, 30, 10, 2),
 ('Starter', 29.90, 100, 30, 4),
 ('Pro', 49.90, 250, 75, 6),
 ('Business', 79.90, 500, 150, 12);
