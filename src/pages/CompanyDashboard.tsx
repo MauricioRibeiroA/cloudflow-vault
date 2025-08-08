@@ -151,6 +151,7 @@ const CompanyDashboard = () => {
 
   const fetchCompany = async (companyId: string) => {
     try {
+      console.log('Fetching company data for ID:', companyId);
       const { data, error } = await supabase
         .from('companies')
         .select(`
@@ -167,7 +168,13 @@ const CompanyDashboard = () => {
         .eq('id', companyId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in fetchCompany:', error);
+        throw error;
+      }
+
+      console.log('Raw company data from database:', data);
+      console.log('Plans data:', data.plans);
 
       const companyData = {
         id: data.id,
@@ -182,6 +189,7 @@ const CompanyDashboard = () => {
         max_users: data.plans?.max_users
       };
 
+      console.log('Processed company data:', companyData);
       setCompany(companyData);
       return companyData; // Return data for immediate use
     } catch (error: any) {
@@ -294,7 +302,14 @@ const CompanyDashboard = () => {
       // Use fresh company data passed as parameter, fallback to React state
       const currentCompany = companyData || company;
       
-      setStats({
+      console.log('Current company data being used for stats:', currentCompany);
+      console.log('Storage limit GB:', currentCompany?.storage_limit_gb);
+      console.log('Download limit GB:', currentCompany?.download_limit_gb);
+      console.log('Max users:', currentCompany?.max_users);
+      console.log('Plan name:', currentCompany?.plan_name);
+      console.log('Price BRL:', currentCompany?.price_brl);
+      
+      const finalStats = {
         totalFiles,
         totalSize,
         totalUsers,
@@ -311,7 +326,10 @@ const CompanyDashboard = () => {
         maxUsers: currentCompany?.max_users || 0,
         recentFiles,
         activeUsers: activeUsersList
-      });
+      };
+      
+      console.log('Final stats being set:', finalStats);
+      setStats(finalStats);
     } catch (error: any) {
       console.error('Error fetching company stats:', error);
     } finally {
