@@ -91,6 +91,70 @@ class SecureBackblazeService {
 
       console.log('🔒 Upload realizado com segurança')
       
+      // Save metadata to Supabase files table
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          console.log('🔒 Salvando metadados no Supabase...')
+          
+          // Get user's company_id
+          const { data: companyIdData, error: companyIdError } = await supabase
+            .rpc('get_user_company_id', { user_id: user.id })
+          
+          if (companyIdError) {
+            console.error('Error getting company_id:', companyIdError)
+          } else {
+            const companyId = companyIdData
+            console.log('🔒 Company ID do usuário:', companyId)
+            
+            // Build full file path (same format as B2)
+            const filePath = `cloud-vault/${requestedPath}${file.name}`
+            
+            // Insert file metadata
+            const { error: dbError } = await supabase
+              .from('files')
+              .insert({
+                name: file.name,
+                file_path: filePath,
+                file_size: file.size,
+                file_type: file.type || 'application/octet-stream',
+                folder_id: requestedPath || null,
+                uploaded_by: user.id,
+                company_id: companyId
+              })
+
+            if (dbError) {
+              console.error('🔒 Erro ao salvar metadados:', dbError)
+            } else {
+              console.log('🔒 Metadados salvos com sucesso!')
+              
+              // Log the upload action
+              await supabase
+                .from('logs')
+                .insert({
+                  user_id: user.id,
+                  company_id: companyId,
+                  action: 'file_upload',
+                  target_type: 'file',
+                  target_name: file.name,
+                  details: {
+                    file_size: file.size,
+                    file_type: file.type,
+                    folder_id: requestedPath,
+                    backblaze_key: filePath,
+                    upload_method: 'secure_edge_function'
+                  }
+                })
+              
+              console.log('🔒 Log de upload salvo com sucesso!')
+            }
+          }
+        }
+      } catch (metadataError) {
+        console.error('🔒 Erro ao salvar metadados (não afeta upload):', metadataError)
+        // Não falhar o upload por causa de erro de metadados
+      }
+      
       return {
         key: result.key || `${requestedPath}${file.name}`,
         name: file.name,
