@@ -135,16 +135,18 @@ DO $$
 DECLARE
     test_company_id UUID := '4eded551-af8f-40f0-b983-67d804ee2d11';
     result JSON;
+    company_data RECORD;
 BEGIN
     RAISE NOTICE '=== TESTE DA FUNÇÃO CORRIGIDA ===';
     
     -- Estado antes
     RAISE NOTICE 'Estado antes do teste:';
-    PERFORM (
-        SELECT RAISE(NOTICE, 'Empresa: % | Download usado: % bytes | Reset date: %', 
-                     name, current_download_used_bytes, download_reset_date)
-        FROM companies WHERE id = test_company_id
-    );
+    SELECT name, current_download_used_bytes, download_reset_date 
+    INTO company_data
+    FROM companies WHERE id = test_company_id;
+    
+    RAISE NOTICE 'Empresa: % | Download usado: % bytes | Reset date: %', 
+        company_data.name, company_data.current_download_used_bytes, company_data.download_reset_date;
     
     -- Executar função
     RAISE NOTICE 'Executando update_download_usage...';
@@ -154,9 +156,10 @@ BEGIN
     
     -- Estado depois
     RAISE NOTICE 'Estado após o teste:';
-    PERFORM (
-        SELECT RAISE(NOTICE, 'Empresa: % | Download usado: % bytes | Reset date: %', 
-                     name, current_download_used_bytes, download_reset_date)
-        FROM companies WHERE id = test_company_id
-    );
+    SELECT name, current_download_used_bytes, download_reset_date 
+    INTO company_data
+    FROM companies WHERE id = test_company_id;
+    
+    RAISE NOTICE 'Empresa: % | Download usado: % bytes | Reset date: %', 
+        company_data.name, company_data.current_download_used_bytes, company_data.download_reset_date;
 END $$;
