@@ -159,26 +159,13 @@ export default function SuperAdminDashboard() {
 
         try {
           // Get real usage data directly from files table (same as company dashboard)
-          const { data: companyFiles, error: filesError } = await supabase
+          const { data: companyFiles } = await supabase
             .from('files')
             .select('file_size')
             .eq('company_id', company.id);
 
-          console.log(`Debug - Company ${company.name}:`, {
-            companyId: company.id,
-            filesCount: companyFiles?.length || 0,
-            filesError,
-            sampleFiles: companyFiles?.slice(0, 3)
-          });
-
           const totalStorageBytes = companyFiles?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
           const totalStorageGB = totalStorageBytes / (1024 * 1024 * 1024);
-          
-          console.log(`Debug - Usage calculation for ${company.name}:`, {
-            totalStorageBytes,
-            totalStorageGB,
-            filesData: companyFiles
-          });
           
           // Get storage limit from plans (or use default from Free Trial)
           const storageLimitGB = company.plans?.storage_limit_gb || 10;
@@ -192,8 +179,6 @@ export default function SuperAdminDashboard() {
               : 0,
             download_percentage: 0 // Since we don't have download tracking
           };
-          
-          console.log(`Debug - Final usage data for ${company.name}:`, usageData);
         } catch (err) {
           console.warn(`Failed to load usage for company ${company.name}:`, err);
         }
@@ -297,9 +282,28 @@ export default function SuperAdminDashboard() {
   };
 
   const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 GB';
+    if (bytes === 0) return '0 B';
+    
+    const kb = bytes / 1024;
+    const mb = bytes / (1024 * 1024);
     const gb = bytes / (1024 * 1024 * 1024);
-    return `${gb.toFixed(2)} GB`;
+    
+    if (gb >= 1) {
+      return `${gb.toFixed(2)} GB`;
+    } else if (mb >= 1) {
+      return `${mb.toFixed(2)} MB`;
+    } else if (kb >= 1) {
+      return `${kb.toFixed(2)} KB`;
+    } else {
+      return `${bytes.toFixed(0)} B`;
+    }
+  };
+
+  const formatStorageUsage = (usageGB: number) => {
+    if (usageGB === 0) return '0 B';
+    
+    const bytes = usageGB * 1024 * 1024 * 1024;
+    return formatBytes(bytes);
   };
 
   const getUsagePercentage = (used: number, limit: number) => {
@@ -422,7 +426,7 @@ export default function SuperAdminDashboard() {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>{usageTotals.totalStorageUsed.toFixed(2)} GB</span>
+                <span>{formatStorageUsage(usageTotals.totalStorageUsed)}</span>
                 <span>{usageTotals.totalStorageAvailable.toFixed(2)} GB</span>
               </div>
               <Progress 
@@ -434,7 +438,7 @@ export default function SuperAdminDashboard() {
               />
               <div className="text-xs text-muted-foreground text-center">
                 {usageTotals.totalStorageAvailable > 0 
-                  ? ((usageTotals.totalStorageUsed / usageTotals.totalStorageAvailable) * 100).toFixed(1)
+                  ? ((usageTotals.totalStorageUsed / usageTotals.totalStorageAvailable) * 100).toFixed(4)
                   : 0
                 }% usado de todas as empresas
               </div>
@@ -521,7 +525,7 @@ export default function SuperAdminDashboard() {
                     <TableCell>
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span>{company.storage_used_gb?.toFixed(2) || '0.00'} GB</span>
+                          <span>{formatStorageUsage(company.storage_used_gb || 0)}</span>
                           <span>{company.storage_limit_gb} GB</span>
                         </div>
                         <Progress 
@@ -529,7 +533,7 @@ export default function SuperAdminDashboard() {
                           className="w-full h-2"
                         />
                         <div className="text-xs text-gray-500 text-center">
-                          {(company.storage_percentage || 0).toFixed(1)}% usado
+                          {(company.storage_percentage || 0).toFixed(4)}% usado
                         </div>
                       </div>
                     </TableCell>
