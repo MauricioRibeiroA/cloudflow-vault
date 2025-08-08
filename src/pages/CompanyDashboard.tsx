@@ -188,7 +188,7 @@ export default function CompanyDashboard() {
             {daysRemaining === 0 
               ? "Seu período de teste expira hoje. Contrate um plano para continuar utilizando o sistema."
               : `Restam ${daysRemaining} dias de trial. Após esse período, será necessário contratar um plano.`}
-            <Button className="mt-2" variant="outline" size="sm" onClick={() => navigate('/plans')}>
+            <Button className="mt-2" variant="outline" size="sm" onClick={() => navigate('/upgrades')}>
               Ver Planos Disponíveis
             </Button>
           </AlertDescription>

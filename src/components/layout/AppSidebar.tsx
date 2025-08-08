@@ -47,8 +47,8 @@ const menuItems: MenuItem[] = [
     icon: Home,
   },
   {
-    title: "Planos",
-    url: "/plans",
+    title: "Upgrades",
+    url: "/upgrades",
     icon: CreditCard,
   },
   {

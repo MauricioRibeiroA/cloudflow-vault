@@ -19,7 +19,7 @@ import Logs from './pages/Logs'
 import Backup from './pages/Backup'
 import Settings from './pages/Settings'
 import Companies from './pages/Companies'
-import Plans from './components/Plans'
+import Upgrades from './pages/Upgrades'
 import SuperAdminDashboard from './components/SuperAdminDashboard'
 import SecureFiles from './pages/SecureFiles'
 import HierarchicalDemo from './pages/HierarchicalDemo'
@@ -134,11 +134,11 @@ export default function App() {
               />
 
               <Route
-                path="/plans"
+                path="/upgrades"
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <Plans />
+                      <Upgrades />
                     </AppLayout>
                   </ProtectedRoute>
                 }
