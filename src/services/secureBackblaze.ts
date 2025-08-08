@@ -224,23 +224,10 @@ class SecureBackblazeService {
       // Extract filename from key
       const fileName = key.split('/').pop() || 'download'
       
-      // Create blob URL from the response data
-      const blob = new Blob([response.data], { 
-        type: 'application/octet-stream' 
-      })
+      // Create blob URL from the response data with correct content type
+      const contentType = response.headers?.get('content-type') || 'application/octet-stream'
+      const blob = new Blob([response.data], { type: contentType })
       const downloadUrl = URL.createObjectURL(blob)
-      
-      // Create a temporary link to trigger download with correct filename
-      const link = document.createElement('a')
-      link.href = downloadUrl
-      link.download = fileName
-      link.style.display = 'none'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
-      // Cleanup the blob URL after a short delay
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
       
       // Log download action and track usage
       try {

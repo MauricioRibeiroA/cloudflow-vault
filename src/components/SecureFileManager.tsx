@@ -193,8 +193,18 @@ export const SecureFileManager: React.FC = () => {
       
       const downloadUrl = await secureBackblazeService.downloadFile(file.key)
       
-      // Abrir download em nova aba
-      window.open(downloadUrl, '_blank')
+      // Create a temporary link to trigger download with correct filename
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = file.name // Use the actual file name
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Cleanup the blob URL after a short delay
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+      
       setSuccess(`Download de '${file.name}' iniciado`)
       
     } catch (error) {
