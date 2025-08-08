@@ -147,6 +147,19 @@ class SecureBackblazeService {
                 })
               
               console.log('🔒 Log de upload salvo com sucesso!')
+              
+              // Update company storage usage counter
+              const { data: storageResult, error: storageError } = await supabase
+                .rpc('update_storage_usage', {
+                  company_uuid: companyId,
+                  bytes_change: file.size
+                })
+              
+              if (storageError) {
+                console.error('🔒 Erro ao atualizar contador de armazenamento:', storageError)
+              } else {
+                console.log('🔒 Contador de armazenamento atualizado:', storageResult)
+              }
             }
           }
         }
@@ -262,6 +275,19 @@ class SecureBackblazeService {
               })
             
             console.log('🔒 Download registrado com sucesso!')
+            
+            // Update company download usage counter
+            const { data: usageResult, error: usageError } = await supabase
+              .rpc('update_download_usage', {
+                company_uuid: companyId,
+                bytes_downloaded: fileSize
+              })
+            
+            if (usageError) {
+              console.error('🔒 Erro ao atualizar contador de download:', usageError)
+            } else {
+              console.log('🔒 Contador de download atualizado:', usageResult)
+            }
           }
         }
       } catch (logError) {
