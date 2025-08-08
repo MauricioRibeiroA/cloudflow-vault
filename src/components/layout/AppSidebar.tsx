@@ -13,8 +13,7 @@ import {
   Building2,
   CreditCard,
   Crown,
-  FolderLock,
-  Timer
+  FolderLock
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,12 +49,6 @@ const menuItems: MenuItem[] = [
     title: "Upgrades",
     url: "/upgrades",
     icon: CreditCard,
-  },
-  {
-    title: "Trial Gratuito",
-    url: "/trial",
-    icon: Timer,
-    requiredGroups: ["company_admin"],
   },
   {
     title: "Arquivos Seguros",
