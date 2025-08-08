@@ -68,6 +68,11 @@ interface CompanyWithPlan extends Company {
   download_limit_gb?: number;
   max_users?: number;
   price_brl?: number;
+  // Real-time usage data
+  storage_used_gb?: number;
+  download_used_gb?: number;
+  storage_percentage?: number;
+  download_percentage?: number;
 }
 
 interface DashboardStats {
@@ -129,16 +134,50 @@ export default function SuperAdminDashboard() {
 
     if (error) throw error;
 
-    const companiesWithPlans = data.map(company => ({
-      ...company,
-      plan_name: company.plans?.name || 'Sem Plano',
-      storage_limit_gb: company.plans?.storage_limit_gb || 0,
-      download_limit_gb: company.plans?.download_limit_gb || 0,
-      max_users: company.plans?.max_users || 0,
-      price_brl: company.plans?.price_brl || 0
-    }));
+    // Load real-time usage data for each company
+    const companiesWithUsage = await Promise.all(
+      data.map(async (company) => {
+        let usageData = {
+          storage_used_gb: 0,
+          download_used_gb: 0,
+          storage_percentage: 0,
+          download_percentage: 0
+        };
 
-    setCompanies(companiesWithPlans);
+        try {
+          // Get real-time usage data using get_company_usage function
+          const { data: usage, error: usageError } = await supabase
+            .rpc('get_company_usage', { company_uuid: company.id });
+
+          if (!usageError && usage) {
+            usageData = {
+              storage_used_gb: usage.storage_used_gb || 0,
+              download_used_gb: usage.download_used_gb || 0,
+              storage_percentage: usage.storage_limit_gb > 0 
+                ? Math.min((usage.storage_used_gb / usage.storage_limit_gb) * 100, 100)
+                : 0,
+              download_percentage: usage.download_limit_gb > 0
+                ? Math.min((usage.download_used_gb / usage.download_limit_gb) * 100, 100)
+                : 0
+            };
+          }
+        } catch (err) {
+          console.warn(`Failed to load usage for company ${company.name}:`, err);
+        }
+
+        return {
+          ...company,
+          plan_name: company.plans?.name || 'Sem Plano',
+          storage_limit_gb: company.plans?.storage_limit_gb || 0,
+          download_limit_gb: company.plans?.download_limit_gb || 0,
+          max_users: company.plans?.max_users || 0,
+          price_brl: company.plans?.price_brl || 0,
+          ...usageData
+        };
+      })
+    );
+
+    setCompanies(companiesWithUsage);
   };
 
   const loadPlans = async () => {
@@ -365,25 +404,31 @@ export default function SuperAdminDashboard() {
                     <TableCell>
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span>{formatBytes(company.current_storage_used_bytes)}</span>
+                          <span>{company.storage_used_gb?.toFixed(2) || '0.00'} GB</span>
                           <span>{company.storage_limit_gb} GB</span>
                         </div>
                         <Progress 
-                          value={getUsagePercentage(company.current_storage_used_bytes, company.storage_limit_gb)} 
+                          value={company.storage_percentage || 0} 
                           className="w-full h-2"
                         />
+                        <div className="text-xs text-gray-500 text-center">
+                          {(company.storage_percentage || 0).toFixed(1)}% usado
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span>{formatBytes(company.current_download_used_bytes)}</span>
+                          <span>{company.download_used_gb?.toFixed(2) || '0.00'} GB</span>
                           <span>{company.download_limit_gb} GB</span>
                         </div>
                         <Progress 
-                          value={getUsagePercentage(company.current_download_used_bytes, company.download_limit_gb)} 
+                          value={company.download_percentage || 0} 
                           className="w-full h-2"
                         />
+                        <div className="text-xs text-gray-500 text-center">
+                          {(company.download_percentage || 0).toFixed(1)}% usado
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -476,8 +521,7 @@ export default function SuperAdminDashboard() {
       </Card>
 
       {/* Alerts Section */}
-      {companies.some(c => getUsagePercentage(c.current_storage_used_bytes, c.storage_limit_gb) > 80 ||
-                         getUsagePercentage(c.current_download_used_bytes, c.download_limit_gb) > 80) && (
+      {companies.some(c => (c.storage_percentage || 0) > 80 || (c.download_percentage || 0) > 80) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -488,21 +532,30 @@ export default function SuperAdminDashboard() {
           <CardContent>
             <div className="space-y-2">
               {companies
-                .filter(c => getUsagePercentage(c.current_storage_used_bytes, c.storage_limit_gb) > 80 ||
-                           getUsagePercentage(c.current_download_used_bytes, c.download_limit_gb) > 80)
-                .map(company => (
-                  <div key={company.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                    <div>
-                      <span className="font-medium">{company.name}</span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        está próxima dos limites do plano
-                      </span>
+                .filter(c => (c.storage_percentage || 0) > 80 || (c.download_percentage || 0) > 80)
+                .map(company => {
+                  const storageHigh = (company.storage_percentage || 0) > 80;
+                  const downloadHigh = (company.download_percentage || 0) > 80;
+                  
+                  return (
+                    <div key={company.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                      <div>
+                        <span className="font-medium">{company.name}</span>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {storageHigh && (
+                            <div>🗂️ Armazenamento: {(company.storage_percentage || 0).toFixed(1)}% usado</div>
+                          )}
+                          {downloadHigh && (
+                            <div>📥 Download: {(company.download_percentage || 0).toFixed(1)}% usado este mês</div>
+                          )}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        Contactar Cliente
+                      </Button>
                     </div>
-                    <Button size="sm" variant="outline">
-                      Contactar Cliente
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           </CardContent>
         </Card>
