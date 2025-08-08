@@ -159,13 +159,26 @@ export default function SuperAdminDashboard() {
 
         try {
           // Get real usage data directly from files table (same as company dashboard)
-          const { data: companyFiles } = await supabase
+          const { data: companyFiles, error: filesError } = await supabase
             .from('files')
             .select('file_size')
             .eq('company_id', company.id);
 
-          const totalStorageBytes = companyFiles?.reduce((sum, file) => sum + file.file_size, 0) || 0;
+          console.log(`Debug - Company ${company.name}:`, {
+            companyId: company.id,
+            filesCount: companyFiles?.length || 0,
+            filesError,
+            sampleFiles: companyFiles?.slice(0, 3)
+          });
+
+          const totalStorageBytes = companyFiles?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
           const totalStorageGB = totalStorageBytes / (1024 * 1024 * 1024);
+          
+          console.log(`Debug - Usage calculation for ${company.name}:`, {
+            totalStorageBytes,
+            totalStorageGB,
+            filesData: companyFiles
+          });
           
           // Get storage limit from plans (or use default from Free Trial)
           const storageLimitGB = company.plans?.storage_limit_gb || 10;
@@ -179,6 +192,8 @@ export default function SuperAdminDashboard() {
               : 0,
             download_percentage: 0 // Since we don't have download tracking
           };
+          
+          console.log(`Debug - Final usage data for ${company.name}:`, usageData);
         } catch (err) {
           console.warn(`Failed to load usage for company ${company.name}:`, err);
         }
