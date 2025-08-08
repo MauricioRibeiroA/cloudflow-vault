@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Building2, Settings, Users, UserPlus, Copy, LogIn, ExternalLink } from 'lucide-react';
+import { Plus, Building2, Settings, Users, UserPlus, Copy, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Company {
@@ -237,43 +237,6 @@ const Companies = () => {
     }
   };
 
-  const handleLoginAsAdmin = async () => {
-    if (!createdAdminData) return;
-
-    try {
-      // Sign out current user
-      await supabase.auth.signOut();
-      
-      // Sign in as the new admin
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: createdAdminData.email,
-        password: createdAdminData.password,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Login realizado!",
-        description: `Logado como admin de ${createdAdminData.companyName}.`,
-      });
-
-      // Close dialog and redirect
-      setCredentialsDialogOpen(false);
-      setCreatedAdminData(null);
-      
-      // Redirect to dashboard after a short delay to allow auth context to update
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1000);
-      
-    } catch (error: any) {
-      toast({
-        title: "Erro no login",
-        description: error.message || "Não foi possível fazer login como admin.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
@@ -508,7 +471,7 @@ const Companies = () => {
                   <strong>✅ {createdAdminData.fullName}</strong> foi criado como administrador da empresa <strong>{createdAdminData.companyName}</strong>.
                 </p>
                 <p className="text-xs text-green-700">
-                  Compartilhe as credenciais abaixo de forma segura com o responsável.
+                  O admin já pode fazer login usando as credenciais abaixo. Compartilhe-as de forma segura.
                 </p>
               </div>
 
@@ -593,25 +556,16 @@ const Companies = () => {
                 </p>
               </div>
 
-              <div className="flex justify-between space-x-3">
+              <div className="flex justify-center">
                 <Button
-                  variant="outline"
                   onClick={() => {
                     setCredentialsDialogOpen(false);
                     setCreatedAdminData(null);
                   }}
-                  className="flex-1"
+                  className="w-full"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Fechar
-                </Button>
-                
-                <Button
-                  onClick={handleLoginAsAdmin}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                >
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Fazer Login como Admin
                 </Button>
               </div>
             </div>
