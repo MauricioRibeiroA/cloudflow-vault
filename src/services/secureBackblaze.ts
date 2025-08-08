@@ -118,7 +118,7 @@ class SecureBackblazeService {
                 file_path: filePath,
                 file_size: file.size,
                 file_type: file.type || 'application/octet-stream',
-                folder_id: requestedPath || null,
+                folder_id: null, // For secure uploads, folder_id is managed by the path structure
                 uploaded_by: user.id,
                 company_id: companyId
               })
