@@ -158,7 +158,7 @@ export default function SuperAdminDashboard() {
         };
 
         try {
-          // Get real usage data directly from files table (same as company dashboard)
+          // Get real storage usage data directly from files table (same as company dashboard)
           const { data: companyFiles } = await supabase
             .from('files')
             .select('file_size')
@@ -167,17 +167,23 @@ export default function SuperAdminDashboard() {
           const totalStorageBytes = companyFiles?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
           const totalStorageGB = totalStorageBytes / (1024 * 1024 * 1024);
           
+          // Get real download usage from company record (updated by download tracking)
+          const totalDownloadBytes = company.current_download_used_bytes || 0;
+          const totalDownloadGB = totalDownloadBytes / (1024 * 1024 * 1024);
+          
           // Get storage limit from plans (or use default from Free Trial)
           const storageLimitGB = company.plans?.storage_limit_gb || 10;
           const downloadLimitGB = company.plans?.download_limit_gb || 3;
           
           usageData = {
             storage_used_gb: totalStorageGB,
-            download_used_gb: 0, // We don't track download usage in files table
+            download_used_gb: totalDownloadGB,
             storage_percentage: storageLimitGB > 0 
               ? Math.min((totalStorageGB / storageLimitGB) * 100, 100)
               : 0,
-            download_percentage: 0 // Since we don't have download tracking
+            download_percentage: downloadLimitGB > 0
+              ? Math.min((totalDownloadGB / downloadLimitGB) * 100, 100)
+              : 0
           };
         } catch (err) {
           console.warn(`Failed to load usage for company ${company.name}:`, err);
@@ -454,7 +460,7 @@ export default function SuperAdminDashboard() {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>{usageTotals.totalDownloadUsed.toFixed(2)} GB</span>
+                <span>{formatStorageUsage(usageTotals.totalDownloadUsed)}</span>
                 <span>{usageTotals.totalDownloadAvailable.toFixed(2)} GB</span>
               </div>
               <Progress 
@@ -466,7 +472,7 @@ export default function SuperAdminDashboard() {
               />
               <div className="text-xs text-muted-foreground text-center">
                 {usageTotals.totalDownloadAvailable > 0 
-                  ? ((usageTotals.totalDownloadUsed / usageTotals.totalDownloadAvailable) * 100).toFixed(1)
+                  ? ((usageTotals.totalDownloadUsed / usageTotals.totalDownloadAvailable) * 100).toFixed(4)
                   : 0
                 }% usado de todas as empresas
               </div>
@@ -540,7 +546,7 @@ export default function SuperAdminDashboard() {
                     <TableCell>
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span>{company.download_used_gb?.toFixed(2) || '0.00'} GB</span>
+                          <span>{formatStorageUsage(company.download_used_gb || 0)}</span>
                           <span>{company.download_limit_gb} GB</span>
                         </div>
                         <Progress 
@@ -548,7 +554,7 @@ export default function SuperAdminDashboard() {
                           className="w-full h-2"
                         />
                         <div className="text-xs text-gray-500 text-center">
-                          {(company.download_percentage || 0).toFixed(1)}% usado
+                          {(company.download_percentage || 0).toFixed(4)}% usado
                         </div>
                       </div>
                     </TableCell>
