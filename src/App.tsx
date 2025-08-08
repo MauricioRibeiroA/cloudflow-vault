@@ -26,6 +26,9 @@ import HierarchicalDemo from './pages/HierarchicalDemo'
 import Trial from './pages/Trial'
 import CompanySignup from './pages/CompanySignup'
 import CompleteSignup from './pages/CompleteSignup'
+import SignupEssencial from './pages/SignupEssencial'
+import SignupPlan from './pages/SignupPlan'
+import PaymentPage from './pages/PaymentPage'
 import NotFound from './pages/NotFound'
 
 const queryClient = new QueryClient()
@@ -44,6 +47,13 @@ export default function App() {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/signup/company" element={<CompanySignup />} />
                 <Route path="/complete-signup" element={<CompleteSignup />} />
+                
+                {/* Rotas específicas para signup dos planos */}
+                <Route path="/signup/essencial" element={<SignupEssencial />} />
+                <Route path="/signup/:planName" element={<SignupPlan />} />
+                
+                {/* Rota para página de pagamento */}
+                <Route path="/payment/:planName" element={<PaymentPage />} />
 
               <Route
                 path="/dashboard"

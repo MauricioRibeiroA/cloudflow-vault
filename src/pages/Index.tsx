@@ -386,15 +386,15 @@ export default function Index() {
           </div>
           
           <div className="flex items-center justify-center gap-4">
-            <Button
-              size="lg"
-              variant="secondary"
-              onClick={() => navigate('/signup/company')}
-              className="text-lg px-8 py-3"
-            >
-              <CreditCard className="mr-2 h-5 w-5" />
-              Contratar Plano Essencial
-            </Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            onClick={() => navigate('/signup/essencial')}
+            className="text-lg px-8 py-3"
+          >
+            <CreditCard className="mr-2 h-5 w-5" />
+            Contratar Plano Essencial
+          </Button>
           </div>
         </div>
       </section>
@@ -477,9 +477,16 @@ export default function Index() {
                     <Button 
                       className="w-full mt-8"
                       variant={index === 1 ? "gradient" : "outline"}
-                      onClick={() => navigate('/signup/company')}
+                      onClick={() => {
+                        const planName = plan.name.toLowerCase()
+                        if (planName === 'essencial') {
+                          navigate('/signup/essencial')
+                        } else {
+                          navigate(`/signup/${planName}`)
+                        }
+                      }}
                     >
-                      Começar Trial Gratuito
+                      Contratar Plano {plan.name}
                       <CreditCard className="ml-2 h-4 w-4" />
                     </Button>
                   </CardContent>
