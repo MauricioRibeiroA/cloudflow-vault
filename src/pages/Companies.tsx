@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Building2, Settings, Users, UserPlus } from 'lucide-react';
+import { Plus, Building2, Settings, Users, UserPlus, Copy, LogIn, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Company {
@@ -33,7 +33,14 @@ const Companies = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [createdAdminData, setCreatedAdminData] = useState<{
+    email: string;
+    password: string;
+    fullName: string;
+    companyName: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     domain: '',
@@ -178,12 +185,21 @@ const Companies = () => {
           throw new Error('Não foi possível atualizar o perfil do usuário após várias tentativas.');
         }
 
+        // Store admin data for credentials display
+        setCreatedAdminData({
+          email: adminFormData.email,
+          password: adminFormData.password,
+          fullName: adminFormData.full_name,
+          companyName: selectedCompany.name
+        });
+
         toast({
           title: "Sucesso",
           description: `Admin criado com sucesso para ${selectedCompany.name}!`,
         });
 
         setAdminDialogOpen(false);
+        setCredentialsDialogOpen(true);
         setAdminFormData({ full_name: '', email: '', password: '' });
         setSelectedCompany(null);
       }
@@ -203,6 +219,60 @@ const Companies = () => {
 
   const handleOpenCompanyDetails = (companyId: string) => {
     navigate(`/companies/${companyId}`);
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copiado!",
+        description: `${label} copiado para a área de transferência.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar para a área de transferência.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLoginAsAdmin = async () => {
+    if (!createdAdminData) return;
+
+    try {
+      // Sign out current user
+      await supabase.auth.signOut();
+      
+      // Sign in as the new admin
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: createdAdminData.email,
+        password: createdAdminData.password,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Login realizado!",
+        description: `Logado como admin de ${createdAdminData.companyName}.`,
+      });
+
+      // Close dialog and redirect
+      setCredentialsDialogOpen(false);
+      setCreatedAdminData(null);
+      
+      // Redirect to dashboard after a short delay to allow auth context to update
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+      
+    } catch (error: any) {
+      toast({
+        title: "Erro no login",
+        description: error.message || "Não foi possível fazer login como admin.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -418,6 +488,134 @@ const Companies = () => {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credentials Display Modal */}
+      <Dialog open={credentialsDialogOpen} onOpenChange={setCredentialsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-green-600" />
+              Admin Criado com Sucesso!
+            </DialogTitle>
+          </DialogHeader>
+          
+          {createdAdminData && (
+            <div className="space-y-6">
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <p className="text-sm text-green-800 mb-2">
+                  <strong>✅ {createdAdminData.fullName}</strong> foi criado como administrador da empresa <strong>{createdAdminData.companyName}</strong>.
+                </p>
+                <p className="text-xs text-green-700">
+                  Compartilhe as credenciais abaixo de forma segura com o responsável.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Nome Completo</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input 
+                      value={createdAdminData.fullName} 
+                      readOnly 
+                      className="bg-gray-50"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(createdAdminData.fullName, 'Nome')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Email de Login</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input 
+                      value={createdAdminData.email} 
+                      readOnly 
+                      className="bg-gray-50"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(createdAdminData.email, 'Email')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Senha Temporária</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input 
+                      value={createdAdminData.password} 
+                      readOnly 
+                      className="bg-gray-50"
+                      type="text"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(createdAdminData.password, 'Senha')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Empresa</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input 
+                      value={createdAdminData.companyName} 
+                      readOnly 
+                      className="bg-gray-50"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(createdAdminData.companyName, 'Empresa')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                <p className="text-sm text-amber-800">
+                  <strong>⚠️ Importante:</strong> Recomende ao admin alterar a senha no primeiro login por segurança.
+                </p>
+              </div>
+
+              <div className="flex justify-between space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCredentialsDialogOpen(false);
+                    setCreatedAdminData(null);
+                  }}
+                  className="flex-1"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Fechar
+                </Button>
+                
+                <Button
+                  onClick={handleLoginAsAdmin}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Fazer Login como Admin
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
