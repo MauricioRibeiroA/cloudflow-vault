@@ -368,6 +368,66 @@ const uploadFileViaEdge = async (path: string, file: File) => {
     });
     
     console.log('📤 Upload successful:', result);
+    
+    // Save metadata to Supabase files table after successful upload
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && result) {
+      console.log('📤 Saving file metadata to Supabase...');
+      
+      // Get user's company_id
+      const { data: companyIdData, error: companyIdError } = await supabase
+        .rpc('get_user_company_id', { user_id: user.id });
+      
+      if (companyIdError) {
+        console.error('Error getting company_id:', companyIdError);
+      } else {
+        const companyId = companyIdData;
+        console.log('📤 User company_id:', companyId);
+        
+        // Build file path (same format as B2)
+        const filePath = NAME_PREFIX + path + file.name;
+        
+        // Insert file metadata
+        const { error: dbError } = await supabase
+          .from('files')
+          .insert({
+            name: file.name,
+            file_path: filePath,
+            file_size: file.size,
+            file_type: file.type || 'application/octet-stream',
+            folder_id: path || null,
+            uploaded_by: user.id,
+            company_id: companyId
+          });
+
+        if (dbError) {
+          console.error('Error saving file metadata:', dbError);
+        } else {
+          console.log('📤 File metadata saved successfully!');
+          
+          // Log the upload action
+          await supabase
+            .from('logs')
+            .insert({
+              user_id: user.id,
+              company_id: companyId,
+              action: 'file_upload',
+              target_type: 'file',
+              target_name: file.name,
+              details: {
+                file_size: file.size,
+                file_type: file.type,
+                folder_id: path,
+                backblaze_key: filePath,
+                upload_method: 'edge_function'
+              }
+            });
+          
+          console.log('📤 Upload logged successfully!');
+        }
+      }
+    }
+    
     return result;
   } catch (error) {
     console.error('📤 Upload failed:', error);
