@@ -287,7 +287,7 @@ const CompanyDashboard = () => {
         downloadLimit: (company?.download_limit_gb || 0) * 1024 * 1024 * 1024,
         dailyUploads,
         avgFileSize,
-        planName: company?.plan_name || 'Plano Básico',
+        planName: company?.plan_name || 'Free Trial',
         planPrice: company?.price_brl || 0,
         trialEndsAt: company?.trial_ends_at,
         isTrialActive: company?.is_trial_active || false,
@@ -452,7 +452,7 @@ const CompanyDashboard = () => {
       )}
 
       {/* Main Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Armazenamento</CardTitle>
@@ -542,57 +542,6 @@ const CompanyDashboard = () => {
             <p className={`text-xs mt-1 ${getUsageColor(usersPercentage)}`}>
               {usersPercentage.toFixed(1)}% utilizado
             </p>
-          </CardContent>
-        </Card>
-
-        {/* Trial Status Card */}
-        <Card className={`${stats.isTrialActive ? (daysRemaining <= 2 ? 'border-red-500 bg-red-50/50' : 'border-yellow-500 bg-yellow-50/50') : 'border-green-500 bg-green-50/50'}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {stats.isTrialActive ? 'Trial Status' : 'Status da Conta'}
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {stats.isTrialActive ? (
-              <>
-                <div className="text-2xl font-bold">
-                  {daysRemaining} dias
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  restantes no trial
-                </p>
-                <div className="mt-2">
-                  <Progress 
-                    value={daysRemaining > 0 ? ((7 - daysRemaining) / 7) * 100 : 100} 
-                    className="h-2"
-                  />
-                </div>
-                <p className={`text-xs mt-1 ${
-                  daysRemaining <= 1 ? 'text-red-600' : 
-                  daysRemaining <= 2 ? 'text-yellow-600' : 
-                  'text-green-600'
-                }`}>
-                  {daysRemaining === 0 ? 'Expira hoje!' : 
-                   daysRemaining === 1 ? 'Expira amanhã!' :
-                   `${((7 - daysRemaining) / 7 * 100).toFixed(0)}% do trial usado`}
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  Ativo
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  conta contratada
-                </p>
-                <div className="mt-2">
-                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-                    ✓ Plano Contratado
-                  </Badge>
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
       </div>
