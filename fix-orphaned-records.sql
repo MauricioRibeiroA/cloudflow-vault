@@ -94,24 +94,24 @@ WHERE au.id IS NULL;
 /*
 DO $$
 DECLARE
-    user_id UUID;
+    target_user_id UUID;
 BEGIN
     -- Encontrar o ID do usuário pelo email
-    SELECT id INTO user_id 
+    SELECT id INTO target_user_id 
     FROM auth.users 
     WHERE email = 'feitoaforma@gmail.com';
     
-    IF user_id IS NOT NULL THEN
+    IF target_user_id IS NOT NULL THEN
         -- Deletar registros relacionados primeiro
-        DELETE FROM public.folders WHERE created_by = user_id;
-        DELETE FROM public.files WHERE uploaded_by = user_id;
-        DELETE FROM public.settings WHERE updated_by = user_id;
-        DELETE FROM public.permissions WHERE user_id = user_id;
-        DELETE FROM public.logs WHERE user_id = user_id;
-        DELETE FROM public.profiles WHERE user_id = user_id;
+        DELETE FROM public.folders WHERE created_by = target_user_id;
+        DELETE FROM public.files WHERE uploaded_by = target_user_id;
+        DELETE FROM public.settings WHERE updated_by = target_user_id;
+        DELETE FROM public.permissions WHERE user_id = target_user_id;
+        DELETE FROM public.logs WHERE user_id = target_user_id;
+        DELETE FROM public.profiles WHERE user_id = target_user_id;
         
         -- Deletar usuário do auth
-        DELETE FROM auth.users WHERE id = user_id;
+        DELETE FROM auth.users WHERE id = target_user_id;
         
         RAISE NOTICE 'Usuário % deletado com sucesso', 'feitoaforma@gmail.com';
     ELSE
